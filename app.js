@@ -5,13 +5,14 @@ import { candidats, reglagesMixte, joindre } from './mixtes.js';
 import { villesTraversees, villesEtapes } from './villes.js';
 import { planExploration, coutPlan, produit, assembler, cleMorceau } from './explore.js';
 import { ouvragesTraverses } from './ouvrages.js';
+import { TARIFS_KM } from './peages-data.js';
 
 // Réglages Valhalla des deux moitiés d'un trajet mixte.
 const RAPIDE = { auto: { use_tolls: 1, use_highways: 1 } };
 const LIBRE = { auto: { use_tolls: 0, use_highways: 0 } };
 
 /** Version affichée en haut de la page : à augmenter à chaque modification publiée. */
-export const VERSION = '1.10.0';
+export const VERSION = '1.10.1';
 export const VERSION_DATE = '25/11/2026';
 
 const $ = id => document.getElementById(id);
@@ -121,7 +122,10 @@ function render() {
     const payants = r.ouvrages.filter(o => !o.gratuit);
     const dont = payants.map(o => `dont ${esc(o.nom)} ${fmtEur(o.prix)}${o.verifier ? ' <span title="sources en désaccord">⚠️ à vérifier</span>' : ''}`).join(', ');
     const gratuits = r.ouvrages.filter(o => o.gratuit).map(o => `${esc(o.nom)} gratuit dans ce sens`).join(', ');
-    const precis = [dont, c.tarifsReels.length ? `tarif réel ${c.tarifsReels.join(', ')}` : ''].filter(Boolean).join(' ; ');
+    // Tarif réel (grilles officielles) ou estimé à la main (Sanef, SAPN), voir outils/peages.mjs.
+    const estime = a => String(TARIFS_KM[a]?.[2] || '').startsWith('estimé');
+    const reels = c.tarifsReels.filter(a => !estime(a)), estimes = c.tarifsReels.filter(estime);
+    const precis = [dont, reels.length ? `tarif réel ${reels.join(', ')}` : '', estimes.length ? `tarif estimé ${estimes.join(', ')}` : ''].filter(Boolean).join(' ; ');
     const peage = c.toll >= 0.5 ? `péage ${fmtE(c.toll)} <small>(${precis || `~${Math.round(r.tollKm)} km au tarif estimé`})</small>` : 'sans péage';
     const notePeage = gratuits ? `<p>${gratuits}</p>` : '';
     return `<li class="row${hot === i ? ' on' : ''}${estDomine ? ' dom' : ''}" data-i="${i}" style="--rc:${COLORS[i % COLORS.length]}"${estDomine && !voirDomines ? ' hidden' : ''}>

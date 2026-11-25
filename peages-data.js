@@ -1,10 +1,14 @@
 // Fichier généré par outils/peages.mjs : ne pas modifier à la main.
 // Tarif médian au kilomètre (voitures, classe 1) par autoroute, tarifs 2026.
 // Sources : data.gouv.fr (« Tarifs autoroutes APRR », Licence Ouverte 2.0 ; « Gares de péage du réseau routier
-// national concédé », ODC-BY) et tarifs internes publiés par VINCI Autoroutes (ASF, Escota, Cofiroute / Arcour).
+// national concédé », ODC-BY), tarifs internes publiés par VINCI Autoroutes (ASF, Escota, Cofiroute / Arcour)
+// et, à la grosse, grilles Sanef et SAPN au 1er février 2026.
 export const TARIFS_ANNEE = 2026;
 /** Autoroute → [€/km, nombre de couples mesurés (0 : médiane de la société), origine]. */
 export const TARIFS_KM = {
+  A1: [0.1, 0, 'estimé Sanef/SAPN'],
+  A2: [0.1, 0, 'estimé Sanef/SAPN'],
+  A4: [0.099, 0, 'estimé Sanef/SAPN'],
   A5: [0.085, 68, 'mesuré'],
   A6: [0.091, 196, 'mesuré'],
   A7: [0.099, 116, 'mesuré'],
@@ -12,10 +16,14 @@ export const TARIFS_KM = {
   A9: [0.1, 101, 'mesuré'],
   A10: [0.109, 153, 'mesuré'],
   A11: [0.114, 34, 'mesuré'],
+  A13: [0.088, 0, 'estimé Sanef/SAPN'],
+  A14: [0.54, 0, 'estimé Sanef/SAPN'],
+  A16: [0.122, 0, 'estimé Sanef/SAPN'],
   A19: [0.175, 68, 'mesuré'],
   A20: [0.108, 10, 'mesuré'],
   A26: [0.097, 6, 'mesuré'],
   A28: [0.167, 56, 'mesuré'],
+  A29: [0.1, 0, 'estimé Sanef/SAPN'],
   A31: [0.088, 50, 'mesuré'],
   A36: [0.09, 28, 'mesuré'],
   A39: [0.092, 24, 'mesuré'],

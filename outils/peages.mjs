@@ -13,7 +13,7 @@
 //   - Vinci : tarif ÷ (distance à vol d'oiseau entre les deux gares × facteur de détour mesuré sur APRR) ;
 //   - couples de 15 km ou plus, deux gares sur la même autoroute ; médiane par autoroute (5 couples au moins) ;
 //   - autoroute d'une société sans assez de mesures : médiane de la société.
-// Pas encore : Sanef et SAPN (grilles en PDF difficiles à lire automatiquement), Arcos (tarif selon l'heure).
+// Sanef et SAPN : grilles PDF difficiles à lire automatiquement, estimation à la main (ESTIMATIONS). Pas d'Arcos (tarif selon l'heure).
 //
 // Usage : node outils/peages.mjs > peages-data.js
 //   Les adresses changent parfois : vérifier SOURCES (data.gouv.fr et la page « tarifs de péage » de VINCI Autoroutes).
@@ -32,6 +32,19 @@ const SOURCES = {
 };
 const EXT = { aprr: 'csv', area: 'csv', gares: 'csv', asf: 'txt', escota: 'txt', cofiroute: 'txt' };
 const ANNEE = 2026, MIN_KM = 15, MIN_COUPLES = 5;
+// Sanef et SAPN : grilles PDF illisibles automatiquement. Estimation grossière, relevée à la main sur de longs trajets
+// des grilles au 1er février 2026, distance à vol d'oiseau entre les villes × 1,12. À revoir chaque année.
+const ESTIMATIONS = {
+  A1: 0.10,     // Sanef : pas de long trajet lisible, médiane Sanef
+  A2: 0.10,     // Sanef : idem
+  A4: 0.099,    // Paris (péage de Coutevroult) → Metz : 29,50 € pour ~298 km
+  A13: 0.088,   // Caen → Chaufour : 15,00 € pour ~171 km
+  A14: 0.54,    // péage de Montesson : 10,80 € (6,60 € en heures creuses) pour ~20 km payants
+  A16: 0.122,   // Boulogne (péage d'Herquelingue) → Beauvais Nord : 20,10 € pour ~165 km
+  A26: 0.098,   // Calais (péage de Setques) → Reims (péage de Courcy) : 26,60 € pour ~271 km
+  A29: 0.10     // Le Havre → Saint-Saëns : 9,50 € pour ~95 km
+};
+
 // Autoroutes gratuites hormis un ouvrage (compté à part dans ouvrages.js) : jamais de tarif au km.
 const GRATUITES = new Set(['A75']);
 
@@ -119,12 +132,14 @@ for (const [a, v] of taux) if (v.length >= MIN_COUPLES && !GRATUITES.has(a)) res
 for (const [soc, s] of societes) {
   for (const a of s.autoroutes) if (!resultat.has(a) && !GRATUITES.has(a) && s.taux.length) resultat.set(a, [+mediane(s.taux).toFixed(3), 0, soc]);
 }
+for (const [a, t] of Object.entries(ESTIMATIONS)) if (!resultat.has(a)) resultat.set(a, [t, 0, 'estimé Sanef/SAPN']);
 const liste = [...resultat].sort((x, y) => parseInt(x[0].slice(1), 10) - parseInt(y[0].slice(1), 10));
-console.error(liste.map(([a, [t, n, o]]) => `${a} ${t} €/km (${o === 'mesuré' ? `${n} couples` : `médiane ${o}`})`).join('\n'));
+console.error(liste.map(([a, [t, n, o]]) => `${a} ${t} €/km (${o === 'mesuré' ? `${n} couples` : o.startsWith('estimé') ? o : `médiane ${o}`})`).join('\n'));
 console.log(`// Fichier généré par outils/peages.mjs : ne pas modifier à la main.
 // Tarif médian au kilomètre (voitures, classe 1) par autoroute, tarifs ${ANNEE}.
 // Sources : data.gouv.fr (« Tarifs autoroutes APRR », Licence Ouverte 2.0 ; « Gares de péage du réseau routier
-// national concédé », ODC-BY) et tarifs internes publiés par VINCI Autoroutes (ASF, Escota, Cofiroute / Arcour).
+// national concédé », ODC-BY), tarifs internes publiés par VINCI Autoroutes (ASF, Escota, Cofiroute / Arcour)
+// et, à la grosse, grilles Sanef et SAPN au 1er février ${ANNEE}.
 export const TARIFS_ANNEE = ${ANNEE};
 /** Autoroute → [€/km, nombre de couples mesurés (0 : médiane de la société), origine]. */
 export const TARIFS_KM = {

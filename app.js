@@ -10,7 +10,7 @@ const RAPIDE = { auto: { use_tolls: 1, use_highways: 1 } };
 const LIBRE = { auto: { use_tolls: 0, use_highways: 0 } };
 
 /** Version affichée en haut de la page : à augmenter à chaque modification publiée. */
-export const VERSION = '1.7.1';
+export const VERSION = '1.7.2';
 export const VERSION_DATE = '25/11/2026';
 
 const $ = id => document.getElementById(id);
@@ -268,6 +268,8 @@ async function run(e) {
   clearTimeout(suggTimer.from); clearTimeout(suggTimer.to);
   for (const u of document.querySelectorAll('.sugg')) u.hidden = true;
   const t0 = performance.now();
+  if (document.activeElement) document.activeElement.blur();   // referme le clavier du téléphone
+  let defile = false;
   try {
     st.textContent = 'Recherche des adresses…';
     const a = await lieuDe('from'); await sleep(300);
@@ -286,6 +288,11 @@ async function run(e) {
         // Affichage au fil de l'eau : la liste se remplit dès la première réponse.
         routes = dedupe(found).sort((x, y) => x.min - y.min);
         $('res').hidden = false; $('lim').hidden = false; render();
+        // Aux premiers trajets, on fait défiler jusqu'à la carte (avec la progression juste au-dessus).
+        if (!defile) {
+          defile = true;
+          $('st').scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' });
+        }
       } catch (err) { fails++; }
       if (p < PROFILES.length - 1) await sleep(DELAI_VALHALLA);
     }

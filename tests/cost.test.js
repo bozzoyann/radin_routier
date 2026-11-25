@@ -163,3 +163,10 @@ test('escalier : 12 % pile suffit', () => {
   assert.deepEqual(escalier([{ min: 100, eur: 100 }, { min: 130, eur: 88 }]), [0, 1]);
   assert.deepEqual(escalier([{ min: 100, eur: 100 }, { min: 130, eur: 88.5 }]), [0]);
 });
+
+test('escalier : une suite de petites marches ne fait pas tout disparaître', () => {
+  // Chaque trajet ne fait gagner que 5 € (environ 5 %) sur le précédent, mais les écarts
+  // se cumulent par rapport au dernier trajet RETENU : 100 → 85 (−15 %) → 70 (−18 %).
+  const t = [100, 95, 90, 85, 80, 75, 70].map((eur, k) => ({ min: 100 + 10 * k, eur }));
+  assert.deepEqual(escalier(t), [0, 3, 6]);
+});

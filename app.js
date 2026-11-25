@@ -3,7 +3,7 @@ import { DEF, USURE_DEF, usureParKm, analyse, dedupe, cost, along, domines, marc
 import { PROFILES, DELAI_VALHALLA, geocode, route, suggest } from './routing.js';
 
 /** Version affichée en haut de la page : à augmenter à chaque modification publiée. */
-export const VERSION = '1.1.0';
+export const VERSION = '1.1.1';
 export const VERSION_DATE = '25/11/2026';
 
 const $ = id => document.getElementById(id);

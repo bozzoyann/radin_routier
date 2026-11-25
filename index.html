@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Radin routier</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500&family=Barlow+Semi+Condensed:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+/* VOICE: outil d'automobiliste, direct, chiffres d'abord
+   IDEA: les panneaux de direction routiers français
+   PICTURE: carte schématique des itinéraires + une ligne par trajet
+   COLOUR and TYPE: blanc/asphalte, bleu autoroute, vert route, rouge cartouche; Barlow
+   LAYOUT: formulaire compact, puis tri, carte et liste empilées */
+:root{color-scheme:light dark;--bg:light-dark(#ffffff,#15171b);--ink:light-dark(#14181f,#eef0f3);--mut:light-dark(#5b6270,#a3a9b5);--line:light-dark(#e2e4e8,#2c3038);--soft:light-dark(#f2f3f5,#1e2127);--blue:#1f4fa3;--green:#17703f;--red:#c8102e;--yel:#f5c400;--ok:light-dark(#17703f,#4cc283);--bad:light-dark(#b3261e,#ff8a80)}
+:root[data-theme=light]{color-scheme:light}:root[data-theme=dark]{color-scheme:dark}
+*{box-sizing:border-box;min-width:0}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.55 Barlow,system-ui,sans-serif;overflow-x:clip}
+.band{padding:clamp(20px,4vw,48px) max(5vw,16px);max-width:1100px;margin:0 auto}
+.top{background:var(--blue);color:#fff;max-width:none}
+.top>div{max-width:1100px;margin:0 auto;display:flex;gap:16px;align-items:center;flex-wrap:wrap}
+h1{font:700 clamp(30px,5vw,46px)/1.05 "Barlow Semi Condensed",sans-serif;margin:0;text-wrap:balance}
+.top p{margin:4px 0 0;opacity:.9;max-width:60ch}
+.sign{border:2px solid #fff;border-radius:8px;padding:6px 12px;font:600 15px "Barlow Semi Condensed",sans-serif;white-space:nowrap}
+form{display:grid;gap:14px}
+.od{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);gap:10px;align-items:end}
+label{display:grid;gap:4px;font-size:14px;color:var(--mut)}
+input,select{font:16px Barlow,sans-serif;color:var(--ink);background:var(--bg);border:1.5px solid var(--line);border-radius:8px;padding:10px 12px;min-height:44px;width:100%}
+input:focus-visible,select:focus-visible,button:focus-visible,a:focus-visible{outline:3px solid var(--yel);outline-offset:2px}
+button,.btn{font:600 16px "Barlow Semi Condensed",sans-serif;min-height:44px;border-radius:8px;border:1.5px solid var(--line);background:var(--soft);color:var(--ink);padding:0 16px;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;gap:6px}
+.go{background:var(--green);border-color:var(--green);color:#fff;font-size:18px;justify-content:center}
+.go[disabled]{opacity:.6;cursor:wait}
+.swap{width:44px;padding:0;justify-content:center}
+.set{border:0;padding:0;margin:0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.set legend{font:600 15px "Barlow Semi Condensed",sans-serif;margin-bottom:6px;color:var(--ink)}
+.u{display:flex;align-items:center;gap:6px}.u span{font-size:13px;white-space:nowrap}
+#st{min-height:1.5em;color:var(--mut);margin:14px 0 0}#st.err{color:var(--bad)}
+.sort{display:flex;gap:6px;flex-wrap:wrap;margin:22px 0 14px;align-items:center}
+.sort b{font-weight:500;color:var(--mut);margin-right:4px}
+.sort button[aria-pressed=true]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.fig{position:relative;min-height:260px;height:34vh;max-height:380px;background:var(--soft);border-radius:12px}
+.fig>svg{position:absolute;inset:0;width:100%;height:100%}
+ul{list-style:none;padding:0;margin:16px 0 0;display:grid;gap:12px}
+.row{border:1.5px solid var(--line);border-radius:12px;padding:14px 16px;display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:4px 20px;transition:border-color .15s}
+.row.on{border-color:var(--ink)}
+.r1{display:flex;gap:8px;align-items:center;flex-wrap:wrap;grid-column:1/-1}
+.dot{width:14px;height:14px;border-radius:50%;flex:none}
+.r1 strong{font:600 18px "Barlow Semi Condensed",sans-serif}
+.kind{font:600 13px "Barlow Semi Condensed",sans-serif;color:#fff;border-radius:4px;padding:2px 8px;white-space:nowrap}
+.kA{background:var(--blue)}.kN{background:var(--green)}
+.bdg{font:600 13px "Barlow Semi Condensed",sans-serif;border:1.5px solid currentColor;border-radius:4px;padding:1px 7px;white-space:nowrap}
+.big{display:flex;gap:18px;align-items:baseline;flex-wrap:wrap}
+.big .t,.big .e{font:700 clamp(28px,4vw,36px)/1.1 "Barlow Semi Condensed",sans-serif;font-variant-numeric:tabular-nums;white-space:nowrap}
+.big .e{color:var(--blue)}
+:root:not([data-theme=light]) .big .e{color:light-dark(var(--blue),#8fb3ff)}
+.refs{display:flex;gap:5px;flex-wrap:wrap;align-items:center}
+.c{font:700 13px "Barlow Semi Condensed",sans-serif;padding:1px 6px;border-radius:3px;background:var(--red);color:#fff;white-space:nowrap}
+.cD{background:var(--yel);color:#14181f}
+.det,.dl,.mixl{font-size:14px;color:var(--mut)}.nw{white-space:nowrap}
+.dl b{font-weight:500}.dl .y{color:var(--ok)}.dl .n{color:var(--bad)}
+.act{display:flex;gap:8px;flex-wrap:wrap;align-items:center;justify-content:flex-end;grid-column:2;grid-row:2/7}
+.act .btn{font-size:15px}
+footer{font-size:13px;color:var(--mut);margin-top:24px;max-width:75ch}
+footer a{color:inherit}
+@media(max-width:700px){.set{grid-template-columns:repeat(2,minmax(0,1fr))}.row{grid-template-columns:minmax(0,1fr)}.act{grid-column:1;grid-row:auto;justify-content:flex-start;margin-top:6px}}
+@media(max-width:420px){.od{grid-template-columns:minmax(0,1fr)}.swap{justify-self:center;transform:rotate(90deg)}}
+@media(prefers-reduced-motion:reduce){.row{transition:none}}
+</style>
+</head>
+<body>
+<header class="band top"><div>
+<div style="flex:1 1 320px"><h1>Radin routier</h1>
+<p>Parce qu'une minute ne vaut pas 15 € de péage. Temps, carburant, usure et péage : une ligne par itinéraire, triée comme tu veux.</p></div>
+<span class="sign" aria-hidden="true">Toutes directions →</span>
+</div></header>
+<main class="band">
+<form id="f">
+<div class="od">
+<label>Départ<input id="from" placeholder="ex. : Toulouse" autocomplete="off" required></label>
+<button type="button" class="swap" id="swap" aria-label="Inverser départ et arrivée">⇄</button>
+<label>Arrivée<input id="to" placeholder="ex. : Lyon" autocomplete="off" required></label>
+</div>
+<fieldset class="set">
+<legend>Ta voiture</legend>
+<label>Carburant<select id="carbu"><option>SP95-E10</option><option>SP98</option><option>Gazole</option><option>E85</option><option>GPL</option></select></label>
+<label><span id="prixl">Prix du SP95-E10</span><span class="u"><input id="prix" type="number" step="0.01" min="0" inputmode="decimal"><span>€/L</span></span></label>
+<label>Usure et entretien<span class="u"><input id="usure" type="number" step="0.01" min="0" inputmode="decimal"><span>€/km</span></span></label>
+<label>Conso en ville<span class="u"><input id="cville" type="number" step="0.1" min="0" inputmode="decimal"><span>L/100</span></span></label>
+<label>Conso sur route<span class="u"><input id="croute" type="number" step="0.1" min="0" inputmode="decimal"><span>L/100</span></span></label>
+<label>Conso sur autoroute<span class="u"><input id="cauto" type="number" step="0.1" min="0" inputmode="decimal"><span>L/100</span></span></label>
+</fieldset>
+<fieldset class="set">
+<legend>Tes critères</legend>
+<label>Péage estimé<span class="u"><input id="peage" type="number" step="0.01" min="0" inputmode="decimal"><span>€/km</span></span></label>
+<label>Ton heure vaut<span class="u"><input id="vh" type="number" step="1" min="0" inputmode="numeric"><span>€/h</span></span></label>
+</fieldset>
+<button class="go" id="go">Comparer les itinéraires</button>
+</form>
+<p id="st" role="status"></p>
+<section id="res" hidden>
+<div class="sort" role="group" aria-label="Trier par"><b>Trier par</b>
+<button type="button" data-s="temps" aria-pressed="false">Temps</button>
+<button type="button" data-s="euros" aria-pressed="false">Euros</button>
+<button type="button" data-s="mix" aria-pressed="true">Compromis</button>
+</div>
+<div class="fig"><svg id="map" role="img" aria-label="Carte schématique des itinéraires"></svg></div>
+<ul id="list"></ul>
+</section>
+<footer>
+<p>Euros = carburant + usure + péage. « Compromis » ajoute le temps au prix de ton heure. La consommation est calculée tronçon par tronçon : autoroute, ville (moins de 50 km/h de moyenne) ou route. Prix du carburant indicatif (moyenne E10 début novembre 2026), à ajuster. Les durées sont calculées sans trafic. Le péage est estimé au kilomètre sur les tronçons payants : c'est une approximation, pas le tarif exact de la barrière.</p>
+<p>Itinéraires : <a href="https://valhalla.github.io/valhalla/">Valhalla</a> (serveur FOSSGIS). Adresses : <a href="https://photon.komoot.io">Photon</a>. Données © contributeurs <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>.</p>
+</footer>
+</main>
+<script>
+{
+const $ = id => document.getElementById(id);
+const COLORS = ['#2a78d6','#eb6834','#1baf7a','#c98500','#d55181','#6250d6','#e34948'];
+const DEF = {prix:2.05, usure:0.07, cville:7.5, croute:5.5, cauto:6.5, peage:0.10, vh:15};
+const FUEL_DEF = {'SP95-E10': 2.05, 'Gazole': 2.20};
+const SKEY = 'vpt-set2';
+let fuel = 'SP95-E10', prices = {};
+const KEYS = Object.keys(DEF);
+const VALHALLA = 'https://valhalla1.openstreetmap.de/route?json=';
+const PHOTON = 'https://photon.komoot.io/api/?limit=1&lang=fr&lat=46.6&lon=2.4&q=';
+const PROFILES = [
+  {auto:{use_tolls:1, use_highways:1}, alt:2},
+  {auto:{use_tolls:0.5, use_highways:1}, alt:0},
+  {auto:{use_tolls:0, use_highways:1}, alt:1},
+  {auto:{use_tolls:0, use_highways:0.4}, alt:0},
+  {auto:{use_tolls:0, use_highways:0}, alt:0},
+  {auto:{shortest:true}, alt:0}
+];
+let routes = [], ends = null, sortBy = 'mix', hot = -1;
+
+const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const store = {get(k){try{return JSON.parse(localStorage.getItem(k))}catch(e){return null}}, set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
+const num = id => { const v = parseFloat(String($(id).value).replace(',', '.')); return isFinite(v) && v >= 0 ? v : DEF[id]; };
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const fmtT = min => { const m = Math.round(min), h = Math.floor(m / 60), r = m % 60; return h ? `${h} h ${String(r).padStart(2,'0')}` : `${r} min`; };
+const fmtE = e => `${Math.round(e)} €`;
+
+function decode(str, prec = 6) {
+  let i = 0, lat = 0, lon = 0; const out = [], f = Math.pow(10, prec);
+  while (i < str.length) {
+    for (const k of [0, 1]) {
+      let b, s = 0, r = 0;
+      do { b = str.charCodeAt(i++) - 63; r |= (b & 0x1f) << s; s += 5; } while (b >= 0x20);
+      const d = (r & 1) ? ~(r >> 1) : (r >> 1);
+      if (k === 0) lat += d; else lon += d;
+    }
+    out.push([lat / f, lon / f]);
+  }
+  return out;
+}
+
+function refsOf(man) {
+  const seen = new Map();
+  for (const m of man) {
+    if ((m.length || 0) < 3) continue;
+    for (const n of (m.street_names || [])) {
+      const x = /^([ANDE])\s?(\d+[a-z]?)\b/i.exec(n.trim());
+      if (x) { const k = x[1].toUpperCase() + x[2]; seen.set(k, (seen.get(k) || 0) + m.length); }
+    }
+  }
+  return [...seen.entries()].filter(([, km]) => km >= 5).map(([k]) => k).slice(0, 6);
+}
+
+function analyse(trip, label) {
+  const leg = trip.legs[0], man = leg.maneuvers || [];
+  let hwKm = 0, villeKm = 0, routeKm = 0, tollKm = 0, sum = 0;
+  for (const m of man) {
+    const L = m.length || 0; sum += L;
+    const hw = m.highway || (m.street_names || []).some(n => /^A\s?\d/.test(n));
+    const speed = m.time > 0 ? L / (m.time / 3600) : 99;
+    if (hw) hwKm += L; else if (speed < 50) villeKm += L; else routeKm += L;
+    if (m.toll) tollKm += L;
+  }
+  const km = trip.summary.length, f = sum > 0 ? km / sum : 1;
+  if (sum === 0) routeKm = km;
+  if (trip.summary.has_toll && tollKm === 0) tollKm = hwKm;
+  return {km, min: trip.summary.time / 60, hwKm: hwKm * f, villeKm: villeKm * f, routeKm: routeKm * f, tollKm: tollKm * f, refs: refsOf(man), pts: decode(leg.shape), label};
+}
+
+function dedupe(list) {
+  const out = [];
+  for (const r of list) {
+    if (!out.some(o => Math.abs(o.km - r.km) / o.km < 0.01 && Math.abs(o.min - r.min) / o.min < 0.01)) out.push(r);
+  }
+  return out;
+}
+
+async function geocode(q) {
+  const ll = /^\s*(-?\d+(?:\.\d+)?)\s*[,; ]\s*(-?\d+(?:\.\d+)?)\s*$/.exec(q);
+  if (ll) return {lat: +ll[1], lon: +ll[2], name: q.trim()};
+  const r = await fetch(PHOTON + encodeURIComponent(q));
+  if (!r.ok) throw new Error('recherche d\'adresse indisponible');
+  const d = await r.json(), f = d.features && d.features[0];
+  if (!f) throw new Error(`lieu introuvable : « ${q} »`);
+  const p = f.properties || {}, dep = p.postcode ? ` (${String(p.postcode).slice(0, 2)})` : '';
+  return {lat: f.geometry.coordinates[1], lon: f.geometry.coordinates[0], name: (p.name || q) + dep};
+}
+
+async function route(a, b, prof) {
+  const req = {locations: [{lat: a.lat, lon: a.lon}, {lat: b.lat, lon: b.lon}], costing: 'auto', costing_options: {auto: prof.auto}, units: 'kilometers', language: 'fr-FR', directions_type: 'maneuvers'};
+  if (prof.alt) req.alternates = prof.alt;
+  const r = await fetch(VALHALLA + encodeURIComponent(JSON.stringify(req)));
+  const d = await r.json();
+  if (!r.ok || !d.trip) throw new Error(d.error || `erreur ${r.status}`);
+  return [d.trip, ...(d.alternates || []).map(x => x.trip)];
+}
+
+function cost(r, s) {
+  const litres = (r.villeKm * s.cville + r.routeKm * s.croute + r.hwKm * s.cauto) / 100;
+  const fuel = litres * s.prix, wear = r.km * s.usure, toll = r.tollKm * s.peage;
+  const eur = fuel + wear + toll;
+  return {fuel, wear, toll, eur, mix: eur + r.min / 60 * s.vh};
+}
+
+function settings() { const s = {}; for (const k of KEYS) s[k] = num(k); return s; }
+
+function along(pts, fracs) {
+  const cum = [0];
+  for (let i = 1; i < pts.length; i++) { const [a, b] = [pts[i - 1], pts[i]]; cum.push(cum[i - 1] + Math.hypot(b[0] - a[0], (b[1] - a[1]) * Math.cos(a[0] * Math.PI / 180))); }
+  const tot = cum[cum.length - 1];
+  return fracs.map(f => { const t = f * tot; let i = cum.findIndex(c => c >= t); return pts[Math.max(0, i)]; });
+}
+
+function gmaps(r) {
+  const ll = p => `${p[0].toFixed(5)},${p[1].toFixed(5)}`, w = along(r.pts, [0.25, 0.5, 0.75]).map(ll).join('|');
+  return `https://www.google.com/maps/dir/?api=1&travelmode=driving&origin=${ll(r.pts[0])}&destination=${ll(r.pts[r.pts.length - 1])}&waypoints=${encodeURIComponent(w)}`;
+}
+
+function gpx(r, i) {
+  const pts = r.pts.map(p => `<trkpt lat="${p[0].toFixed(6)}" lon="${p[1].toFixed(6)}"/>`).join('');
+  const name = `${ends.a.name} - ${ends.b.name} (trajet ${i + 1})`;
+  const xml = `<?xml version="1.0" encoding="UTF-8"?><gpx version="1.1" creator="vrai-prix-trajet" xmlns="http://www.topografix.com/GPX/1/1"><trk><name>${esc(name)}</name><trkseg>${pts}</trkseg></trk></gpx>`;
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([xml], {type: 'application/gpx+xml'}));
+  a.download = `trajet-${i + 1}.gpx`; document.body.appendChild(a); a.click(); a.remove();
+}
+
+function render() {
+  if (!routes.length) return;
+  const s = settings(); prices[fuel] = s.prix; store.set(SKEY, {s, fuel, prices});
+  const rows = routes.map((r, i) => ({r, i, c: cost(r, s)}));
+  const fast = rows.reduce((a, b) => b.r.min < a.r.min ? b : a);
+  const cheap = rows.reduce((a, b) => b.c.eur < a.c.eur ? b : a);
+  const best = rows.reduce((a, b) => b.c.mix < a.c.mix ? b : a);
+  const key = {temps: x => x.r.min, euros: x => x.c.eur, mix: x => x.c.mix}[sortBy];
+  rows.sort((a, b) => key(a) - key(b));
+  $('list').innerHTML = rows.map(({r, i, c}) => {
+    const badges = [fast.i === i ? 'Le plus rapide' : '', cheap.i === i ? 'Le moins cher' : '', best.i === i ? 'Meilleur compromis' : ''].filter(Boolean)
+      .map(b => `<span class="bdg">${b}</span>`).join('');
+    const kind = r.tollKm > 1 ? `<span class="kind kA">Péage ~${Math.round(r.tollKm)} km</span>` : `<span class="kind kN">Sans péage</span>`;
+    let dl;
+    if (i === fast.i) dl = 'Référence : c\'est le trajet le plus rapide.';
+    else {
+      const dt = r.min - fast.r.min, de = fast.c.eur - c.eur;
+      if (de <= 0) dl = `<span class="n">+${fmtT(dt)} et +${fmtE(-de)}</span> par rapport au plus rapide : aucun intérêt.`;
+      else {
+        const rate = dt > 0.5 ? de / (dt / 60) : Infinity;
+        const ok = rate >= s.vh;
+        dl = `+${fmtT(Math.max(dt, 0))} pour <b>${fmtE(de)} économisés</b>, soit <span class="${ok ? 'y' : 'n'}">${isFinite(rate) ? Math.round(rate) + ' €/h' : 'gratuit'}</span> ${ok ? '(mieux payé que ton heure)' : '(moins que ton heure)'}.`;
+      }
+    }
+    const refs = r.refs.map(x => `<span class="c${x[0] === 'D' ? ' cD' : ''}">${esc(x)}</span>`).join('');
+    return `<li class="row${hot === i ? ' on' : ''}" data-i="${i}">
+<div class="r1"><span class="dot" style="background:${COLORS[i % COLORS.length]}"></span><strong>Trajet ${i + 1}</strong>${kind}${badges}</div>
+<div class="big"><span class="t">${fmtT(r.min)}</span><span class="e">${fmtE(c.eur)}</span></div>
+<div class="refs">${refs}</div>
+<div class="det"><span class="nw">${Math.round(r.km)} km</span> · <span class="nw">carburant ${fmtE(c.fuel)}</span> · <span class="nw">usure ${fmtE(c.wear)}</span> · <span class="nw">péage ${fmtE(c.toll)}</span></div>
+<div class="mixl"><span class="nw">autoroute ${Math.round(r.hwKm)} km</span> · <span class="nw">route ${Math.round(r.routeKm)} km</span> · <span class="nw">ville ${Math.round(r.villeKm)} km</span></div>
+<div class="dl">${dl}</div>
+<div class="act"><a class="btn" href="${gmaps(r)}" target="_blank" rel="noopener">Google Maps ↗</a><button type="button" class="btn" data-gpx="${i}">GPX</button></div>
+</li>`;
+  }).join('');
+  draw();
+}
+
+const svg = $('map');
+function draw() {
+  if (!routes.length) return;
+  const W = svg.clientWidth || 600, H = svg.clientHeight || 300, pad = 28;
+  const all = routes.flatMap(r => r.pts);
+  const lat0 = all.reduce((a, p) => a + p[0], 0) / all.length, k = Math.cos(lat0 * Math.PI / 180);
+  const xs = all.map(p => p[1] * k), ys = all.map(p => p[0]);
+  const [x0, x1, y0, y1] = [Math.min(...xs), Math.max(...xs), Math.min(...ys), Math.max(...ys)];
+  const sc = Math.min((W - 2 * pad) / ((x1 - x0) || 1), (H - 2 * pad) / ((y1 - y0) || 1));
+  const ox = (W - (x1 - x0) * sc) / 2, oy = (H - (y1 - y0) * sc) / 2;
+  const P = p => [ox + (p[1] * k - x0) * sc, H - oy - (p[0] - y0) * sc];
+  const order = routes.map((_, i) => i).sort((a, b) => (a === hot) - (b === hot));
+  const lines = order.map(i => {
+    const r = routes[i], step = Math.max(1, Math.floor(r.pts.length / 1500));
+    const d = r.pts.filter((_, j) => j % step === 0 || j === r.pts.length - 1).map((p, j) => (j ? 'L' : 'M') + P(p).map(v => v.toFixed(1)).join(' ')).join('');
+    const on = hot === -1 || hot === i;
+    return `<path d="${d}" fill="none" stroke="${COLORS[i % COLORS.length]}" stroke-width="${hot === i ? 5 : 3}" stroke-linejoin="round" stroke-linecap="round" opacity="${on ? 1 : 0.25}"/>`;
+  }).join('');
+  const A = P(routes[0].pts[0]), B = P(routes[0].pts[routes[0].pts.length - 1]);
+  const ink = getComputedStyle(document.body).color;
+  const lab = (p, t) => { const left = p[0] > W / 2; return `<circle cx="${p[0]}" cy="${p[1]}" r="7" fill="${ink}"/><text x="${p[0] + (left ? -12 : 12)}" y="${p[1] - 10}" text-anchor="${left ? 'end' : 'start'}" font-family="Barlow Semi Condensed,sans-serif" font-weight="600" font-size="15" fill="${ink}">${esc(t)}</text>`; };
+  svg.innerHTML = lines + lab(A, ends.a.name) + lab(B, ends.b.name);
+}
+const ro = new ResizeObserver(draw); ro.observe(svg);
+
+async function run(e) {
+  e.preventDefault();
+  const st = $('st'), go = $('go'); st.className = ''; go.disabled = true;
+  try {
+    store.set('vpt-od', {from: $('from').value, to: $('to').value});
+    st.textContent = 'Recherche des adresses…';
+    const a = await geocode($('from').value); await sleep(300);
+    const b = await geocode($('to').value);
+    let found = [], fails = 0;
+    for (let p = 0; p < PROFILES.length; p++) {
+      st.textContent = `Calcul des itinéraires ${p + 1}/${PROFILES.length}…`;
+      try { found.push(...(await route(a, b, PROFILES[p])).map(t => analyse(t))); } catch (err) { fails++; }
+      if (p < PROFILES.length - 1) await sleep(1100);
+    }
+    if (!found.length) throw new Error('le serveur d\'itinéraires n\'a rien renvoyé (connexion, ou serveur saturé : réessaie dans une minute)');
+    routes = dedupe(found).sort((x, y) => x.min - y.min);
+    ends = {a, b}; hot = -1;
+    $('res').hidden = false;
+    st.textContent = `${ends.a.name} → ${ends.b.name} : ${routes.length} itinéraires différents${fails ? ` (${fails} calcul${fails > 1 ? 's' : ''} en échec)` : ''}.`;
+    render();
+  } catch (err) {
+    st.className = 'err'; st.textContent = 'Oups : ' + (err && err.message ? err.message : 'erreur réseau') + '.';
+  } finally { go.disabled = false; }
+}
+
+const sv = store.get(SKEY) || {}, saved = sv.s || {};
+for (const k of KEYS) $(k).value = saved[k] != null ? saved[k] : DEF[k];
+if (sv.fuel) fuel = sv.fuel;
+prices = sv.prices || {};
+$('carbu').value = fuel; $('prixl').textContent = `Prix du ${fuel}`;
+$('carbu').addEventListener('change', () => {
+  prices[fuel] = num('prix'); fuel = $('carbu').value;
+  $('prixl').textContent = `Prix du ${fuel}`;
+  const p = prices[fuel] != null ? prices[fuel] : FUEL_DEF[fuel];
+  if (p != null) $('prix').value = p;
+  render(); store.set(SKEY, {s: settings(), fuel, prices});
+});
+const od = store.get('vpt-od'); if (od) { $('from').value = od.from || ''; $('to').value = od.to || ''; }
+$('f').addEventListener('submit', run);
+$('swap').addEventListener('click', () => { const t = $('from').value; $('from').value = $('to').value; $('to').value = t; });
+for (const k of KEYS) $(k).addEventListener('input', render);
+document.querySelector('.sort').addEventListener('click', e => {
+  const b = e.target.closest('button[data-s]'); if (!b) return;
+  sortBy = b.dataset.s;
+  for (const x of document.querySelectorAll('.sort button')) x.setAttribute('aria-pressed', String(x === b));
+  render();
+});
+$('list').addEventListener('click', e => {
+  const g = e.target.closest('[data-gpx]'); if (g) { gpx(routes[+g.dataset.gpx], +g.dataset.gpx); return; }
+  if (e.target.closest('a')) return;
+  const li = e.target.closest('.row'); if (!li) return;
+  hot = hot === +li.dataset.i ? -1 : +li.dataset.i; render();
+});
+}
+</script>
+</body>
+</html>

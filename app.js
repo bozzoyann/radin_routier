@@ -11,7 +11,7 @@ const RAPIDE = { auto: { use_tolls: 1, use_highways: 1 } };
 const LIBRE = { auto: { use_tolls: 0, use_highways: 0 } };
 
 /** Version affichée en haut de la page : à augmenter à chaque modification publiée. */
-export const VERSION = '1.9.0';
+export const VERSION = '1.10.0';
 export const VERSION_DATE = '25/11/2026';
 
 const $ = id => document.getElementById(id);

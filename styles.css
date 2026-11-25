@@ -133,3 +133,10 @@ footer a{color:inherit}
 .fig{position:sticky;top:0;z-index:3;box-shadow:0 4px 12px rgb(0 0 0/.12)}
 .row{scroll-margin-top:calc(min(34vh,380px) + 16px)}
 @media(max-width:700px){.fig{height:30vh;min-height:200px}.row{scroll-margin-top:calc(max(30vh,200px) + 16px)}}
+/* Écran large (Fold ouvert, tablette, ordinateur) : carte à gauche, escalier à droite */
+@media (min-width: 720px) {
+  #res{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:20px;align-items:start}
+  #res>.fig{position:sticky;top:12px;height:calc(100dvh - 24px);max-height:640px;min-height:300px}
+  #list{margin-top:0}
+  .row{scroll-margin-top:12px}
+}

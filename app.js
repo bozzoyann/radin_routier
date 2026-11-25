@@ -13,7 +13,7 @@ const RAPIDE = { auto: { use_tolls: 1, use_highways: 1 } };
 const LIBRE = { auto: { use_tolls: 0, use_highways: 0 } };
 
 /** Version affichée en haut de la page : à augmenter à chaque modification publiée. */
-export const VERSION = '1.13.1';
+export const VERSION = '1.13.2';
 export const VERSION_DATE = '25/11/2026';
 
 const $ = id => document.getElementById(id);
@@ -284,6 +284,8 @@ async function explorer() {
   if (expl === moi) { moi.etat = 'fini'; render(); }
 }
 
+const HORS_LIGNE = 'hors ligne';
+
 async function run(e) {
   e.preventDefault();
   const st = $('st'), go = $('go'); st.className = ''; go.disabled = true;
@@ -293,6 +295,7 @@ async function run(e) {
   if (document.activeElement) document.activeElement.blur();   // referme le clavier du téléphone
   let defile = false;
   try {
+    if (!navigator.onLine) throw new Error(HORS_LIGNE);
     st.textContent = 'Recherche des adresses…';
     const a = await lieuDe('from'); await sleep(300);
     const b = await lieuDe('to');
@@ -356,7 +359,10 @@ async function run(e) {
     st.textContent = `${a.name} → ${b.name} : ${routes.length} itinéraires différents en ${sec} s${fails ? ` (${fails} calcul${fails > 1 ? 's' : ''} en échec)` : ''}.`;
     expl = { etat: 'pret' }; render();
   } catch (err) {
-    st.className = 'err'; st.textContent = 'Oups : ' + (err && err.message ? err.message : 'erreur réseau') + '.';
+    st.className = 'err';
+    st.textContent = !navigator.onLine || (err && err.message === HORS_LIGNE)
+      ? '📵 Pas de connexion : Radin routier a besoin d\'internet pour calculer les trajets.'
+      : 'Oups : ' + (err && err.message ? err.message : 'erreur réseau') + '.';
   } finally { go.disabled = false; }
 }
 
@@ -560,7 +566,7 @@ svg.addEventListener('click', e => {
 });
 
 // ---------- Appli installable (PWA) ----------
-if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => { /* pas de hors-ligne : l'appli marche quand même */ });
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => { /* pas installable : l'appli marche quand même */ });
 // Android (Chrome, Samsung Internet) : bouton « Installer » quand le navigateur le propose.
 let invitation = null;
 addEventListener('beforeinstallprompt', e => { e.preventDefault(); invitation = e; $('installer').hidden = false; });

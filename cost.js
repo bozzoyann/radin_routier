@@ -180,15 +180,15 @@ export function escalier(items, seuil = MARCHE_MIN) {
 /** Temps en plus accepté par défaut (minutes), par rapport au trajet le plus rapide. */
 export const LIMITE_DEF = 30;
 
-/** Au-delà de 2 fois la limite (et jusqu'à 3 fois), une suggestion doit faire économiser au moins 25 % de plus. */
-export const VRAI_GAIN = 0.25;
+/** Au-delà de 2 fois la limite (et jusqu'à 3 fois), une suggestion doit faire économiser au moins 20 % de plus. */
+export const VRAI_GAIN = 0.20;
 
 /**
  * Le choix dans la limite de temps de l'utilisateur, et une suggestion au-delà.
  * `items` : l'escalier ([{min, eur}]), du plus rapide au moins cher ; `limite` : minutes en plus acceptées
  * (Infinity : peu importe). Le choix est le trajet le moins cher qui ne dépasse pas la limite.
  * La suggestion est le moins cher jusqu'à 2 fois la limite ; jusqu'à 3 fois seulement s'il fait économiser
- * au moins 25 % (VRAI_GAIN) du prix du choix. -1 s'il n'y en a pas.
+ * au moins 20 % (VRAI_GAIN) du prix du choix. -1 s'il n'y en a pas.
  */
 export function choixLimite(items, limite) {
   if (!items.length) return { choix: -1, suggestion: -1 };

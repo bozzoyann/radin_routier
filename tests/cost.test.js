@@ -173,7 +173,7 @@ test('escalier : une suite de petites marches ne fait pas tout disparaître', ()
 
 import { choixLimite, LIMITE_DEF } from '../cost.js';
 
-test('choixLimite : le moins cher dans la limite, suggestion jusqu\'à 2 fois, ou 3 fois si vrai gain', () => {
+test('choixLimite : le moins cher dans la limite, suggestion jusqu\'à 2 fois, ou 3 fois si vrai gain (20 %)', () => {
   // Un escalier : plus rapide, +8 min (91 €), +1 h 12 (75 €), +1 h 29 (64 €)
   const t = [{ min: 230, eur: 115 }, { min: 238, eur: 91 }, { min: 302, eur: 75 }, { min: 319, eur: 64 }];
   assert.equal(LIMITE_DEF, 30);
@@ -197,4 +197,8 @@ test('choixLimite : entre 2 et 3 fois la limite, un petit gain ne suffit pas', (
   assert.deepEqual(choixLimite(t, 30), { choix: 1, suggestion: -1 });
   // Même trajet à 55 € (−31 %) : vrai gain, suggéré.
   assert.deepEqual(choixLimite([t[0], t[1], { min: 275, eur: 55 }], 30), { choix: 1, suggestion: 2 });
+  // Cas réel rencontré : 28 € de moins sur 111 € (≈ 25 %), entre 2 et 3 fois la limite : suggéré.
+  assert.deepEqual(choixLimite([{ min: 285, eur: 130 }, { min: 317, eur: 111.4 }, { min: 384, eur: 83.6 }], 45), { choix: 1, suggestion: 2 });
+  // 18 % de gain ne suffit toujours pas.
+  assert.deepEqual(choixLimite([t[0], t[1], { min: 275, eur: 65.6 }], 30), { choix: 1, suggestion: -1 });
 });

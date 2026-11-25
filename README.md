@@ -7,7 +7,7 @@ Waze te fait faire 50 km de détour et payer 15 € de péage pour gagner une mi
 ## Mode d'emploi
 
 1. Ouvre la page (GitHub Pages). En local, sers le dossier (`python3 -m http.server`) : les modules JavaScript ne se chargent pas en double-cliquant sur `index.html`.
-2. Règle ta voiture une fois : carburant, prix du litre, consommation en ville, sur route et sur autoroute, usure au km, valeur de ton heure.
+2. Règle ta voiture une fois (un profil par voiture) : carburant, prix du litre, consommation en ville, sur route et sur autoroute, usure au km. L'assistant calcule l'usure à partir de tes factures. Tes réglages restent dans ton navigateur.
 3. Tape le départ et l'arrivée, puis trie par temps, par euros ou par compromis. Le bouton « Google Maps ↗ » ou le fichier GPX t'emmène sur la route choisie.
 
 ## Comment ça calcule
@@ -22,7 +22,7 @@ Le classement « compromis » ajoute le temps passé, compté au prix de ton heu
 
 ## État du projet
 
-C'est un prototype : il n'a pas encore été testé contre les vrais serveurs. La feuille de route est dans le brief.
+v1 en cours : testée contre les vrais serveurs (Toulouse → Lyon : 7 trajets en 10 s). Reste la mise en ligne sur GitHub Pages. La feuille de route est dans le brief.
 
 ## Tests
 

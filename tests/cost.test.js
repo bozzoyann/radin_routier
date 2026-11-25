@@ -35,7 +35,7 @@ test('refsOf : numéros de routes cumulés, petits tronçons compris', () => {
     { length: 2, street_names: ['N88'] }, { length: 2, street_names: ['N 88'] }, { length: 2, street_names: ['N88'] },
     { length: 40, street_names: ['A75', 'E11'] }, { length: 3, street_names: ['D911'] }, { length: 10, street_names: ['Rue de la Paix'] }
   ];
-  assert.deepEqual(refsOf(man), ['A75', 'E11', 'N88']); // N88 = 3 × 2 km ≥ 5 km ; D911 trop court
+  assert.deepEqual(refsOf(man), ['A75', 'N88']); // N88 = 3 × 2 km ≥ 5 km ; D911 trop court
 });
 
 const trip = (man, summary, shape = encode([[43.6, 1.44], [45.76, 4.84]])) => ({ summary, legs: [{ maneuvers: man, shape }] });
@@ -95,4 +95,22 @@ test('dedupe : moins de 1 % d\'écart en distance ET en temps', () => {
 test('along : points de passage à 25, 50 et 75 %', () => {
   const pts = [0, 1, 2, 3, 4].map(i => [0, i]); // équateur : pas de déformation
   assert.deepEqual(along(pts, [0, 0.25, 0.5, 0.75, 1]), [[0, 0], [0, 1], [0, 2], [0, 3], [0, 4]]);
+});
+
+import { usureParKm, USURE_DEF } from '../cost.js';
+
+test('usureParKm : exemple par défaut, vérifiable à la main', () => {
+  const u = usureParKm(USURE_DEF);
+  // 480/40000 + 800/80000 + 800/160000 + 1500/100000 = 0,012 + 0,010 + 0,005 + 0,015
+  near(u.postes.reduce((a, b) => a + b), 0.042);
+  near(u.decote, 2500 / 100000);        // 0,025 €/km
+  near(u.revision, 0);                  // moins de 20 000 km/an : coût fixe, exclu
+  near(u.total, 0.067);                 // ≈ 7 c€/km, comme le brief
+});
+
+test('usureParKm : révision au km et valeurs absurdes ignorées', () => {
+  const u = usureParKm({ ...USURE_DEF, revision: { actif: true, prix: 150, km: 20000 } });
+  near(u.revision, 0.0075); near(u.total, 0.0745);
+  const z = usureParKm({ postes: [{ prix: 500, km: 0 }, { prix: -3, km: 1000 }], decote: { actuelle: 3000, future: 5000, km: 1000 }, revision: { actif: true, prix: 100, km: 0 } });
+  near(z.total, 0); // durée nulle, prix négatif, voiture qui prend de la valeur : rien
 });

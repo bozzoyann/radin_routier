@@ -32,13 +32,13 @@ export function classe(m) {
   return vitesse < SEUIL_VILLE ? 'ville' : 'route';
 }
 
-/** Numéros de routes (A81, N157, D924…) parcourus sur au moins `minKm` km cumulés, par longueur décroissante. */
+/** Numéros de routes A, N et D (A81, N157, D924… ; les numéros européens E sont ignorés) parcourus sur au moins `minKm` km cumulés, par longueur décroissante. */
 export function refsOf(man, minKm = 5, max = 6) {
   const seen = new Map();
   for (const m of man) {
     const L = m.length || 0;
     for (const n of (m.street_names || [])) {
-      const x = /^([ANDE])\s?(\d+[a-z]?)\b/i.exec(n.trim());
+      const x = /^([AND])\s?(\d+[a-z]?)\b/i.exec(n.trim());
       if (x) { const k = x[1].toUpperCase() + x[2]; seen.set(k, (seen.get(k) || 0) + L); }
     }
   }
@@ -103,4 +103,29 @@ export function along(pts, fracs) {
   }
   const tot = cum[cum.length - 1];
   return fracs.map(f => { const i = cum.findIndex(c => c >= f * tot); return pts[i < 0 ? pts.length - 1 : i]; });
+}
+
+/**
+ * Exemple de départ de l'assistant usure : compacte essence d'une dizaine d'années
+ * à fort kilométrage (voir le tableau de docs/BRIEF.md). Prix en €, durée de vie en km.
+ */
+export const USURE_DEF = {
+  postes: [
+    { nom: 'Pneus', prix: 480, km: 40000 },
+    { nom: 'Freins', prix: 800, km: 80000 },
+    { nom: 'Embrayage', prix: 800, km: 160000 },
+    { nom: 'Autres pièces et imprévus', prix: 1500, km: 100000 }
+  ],
+  decote: { actuelle: 6000, future: 3500, km: 100000 },
+  revision: { actif: false, prix: 150, km: 20000 }
+};
+
+const parKm = (prix, km) => (prix > 0 && km > 0 ? prix / km : 0);
+
+/** Usure en €/km : somme des postes, décote, et révision si on dépasse 20 000 km par an. */
+export function usureParKm(u) {
+  const postes = u.postes.map(p => parKm(p.prix, p.km));
+  const decote = parKm(u.decote.actuelle - u.decote.future, u.decote.km);
+  const revision = u.revision.actif ? parKm(u.revision.prix, u.revision.km) : 0;
+  return { postes, decote, revision, total: postes.reduce((a, b) => a + b, 0) + decote + revision };
 }

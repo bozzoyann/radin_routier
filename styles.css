@@ -56,3 +56,39 @@ footer a{color:inherit}
 @media(max-width:700px){.set{grid-template-columns:repeat(2,minmax(0,1fr))}.row{grid-template-columns:minmax(0,1fr)}.act{grid-column:1;grid-row:auto;justify-content:flex-start;margin-top:6px}}
 @media(max-width:420px){.od{grid-template-columns:minmax(0,1fr)}.swap{justify-self:center;transform:rotate(90deg)}}
 @media(prefers-reduced-motion:reduce){.row{transition:none}}
+/* Suggestions d'adresses */
+.ac{position:relative;display:grid;gap:4px}
+.ac>label{font-size:14px;color:var(--mut)}
+.sugg{position:absolute;z-index:5;top:100%;left:0;right:0;margin:4px 0 0;padding:4px;display:block;background:var(--bg);border:1.5px solid var(--line);border-radius:8px;box-shadow:0 6px 20px rgb(0 0 0/.18)}
+.sugg[hidden]{display:none}
+.sugg li{min-height:44px;padding:8px 10px;border-radius:6px;cursor:pointer;display:flex;flex-direction:column;justify-content:center;line-height:1.25}
+.sugg li small{color:var(--mut)}
+.sugg li[aria-selected=true],.sugg li:hover{background:var(--soft)}
+/* Réglages repliables */
+.regl{border:1.5px solid var(--line);border-radius:12px;padding:0 14px}
+.regl>summary,.wiz>summary{min-height:44px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;cursor:pointer;font:600 16px "Barlow Semi Condensed",sans-serif}
+.regl>summary .sum{font:400 14px Barlow,sans-serif;color:var(--mut)}
+.regl[open]{padding-bottom:14px}.regl[open]>.set,.regl[open]>.wiz{margin-top:12px}
+.prof{grid-column:1/-1;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) auto;gap:10px;align-items:end}
+.pbtn{display:flex;gap:6px}
+.wiz{background:var(--soft);border-radius:10px;padding:0 12px}
+.wiz[open]{padding-bottom:12px}
+.hint{font-size:14px;color:var(--mut);margin:4px 0 10px}
+.wt{width:100%;border-collapse:collapse;font-size:14px}
+.wt th{text-align:left;font-weight:500;color:var(--mut);padding:2px 4px}
+.wt td{padding:3px 4px}.wt td:last-child,.wt th:last-child{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
+.wt input{padding:8px;font-size:15px}
+.dec{border:0;padding:0;margin:12px 0 0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.dec legend{font-weight:500;margin-bottom:4px}
+.wline{grid-column:1/-1;margin:0;font-size:14px}
+.chk{display:flex;gap:10px;align-items:center;margin:12px 0 0;color:var(--ink);min-height:44px}
+.chk input{width:22px;height:22px;min-height:0;flex:none}
+.revp{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.revp[hidden]{display:none}
+.wtot{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin:12px 0 0}
+.wtot b{font:700 22px "Barlow Semi Condensed",sans-serif}
+@media(max-width:700px){.prof{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}.pbtn{grid-column:1/-1}.dec{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}}
+.wt{table-layout:fixed}
+.wt th:nth-child(1){width:31%}.wt th:nth-child(2){width:22%}.wt th:nth-child(3){width:30%}.wt th:nth-child(4){width:17%}
+.wt input{padding:8px 6px;-moz-appearance:textfield;appearance:textfield}
+.wt input::-webkit-inner-spin-button,.wt input::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
+.wt td:first-child{hyphens:auto;overflow-wrap:break-word;font-size:13px}

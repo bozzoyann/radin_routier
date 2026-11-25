@@ -18,24 +18,50 @@
 <main class="band">
 <form id="f">
 <div class="od">
-<label>Départ<input id="from" placeholder="ex. : Toulouse" autocomplete="off" required></label>
+<div class="ac"><label for="from">Départ</label><input id="from" placeholder="ex. : Toulouse" autocomplete="off" required role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="from-l"><ul class="sugg" id="from-l" role="listbox" hidden></ul></div>
 <button type="button" class="swap" id="swap" aria-label="Inverser départ et arrivée">⇄</button>
-<label>Arrivée<input id="to" placeholder="ex. : Lyon" autocomplete="off" required></label>
+<div class="ac"><label for="to">Arrivée</label><input id="to" placeholder="ex. : Lyon" autocomplete="off" required role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="to-l"><ul class="sugg" id="to-l" role="listbox" hidden></ul></div>
 </div>
+<details class="regl" id="regl">
+<summary><span>Réglages</span> <span class="sum" id="sum"></span></summary>
 <fieldset class="set">
 <legend>Ta voiture</legend>
+<div class="prof">
+<label>Profil<select id="prof"></select></label>
+<label>Nom<input id="pnom" maxlength="40" autocomplete="off"></label>
+<div class="pbtn"><button type="button" id="padd">+ Nouveau</button><button type="button" id="pdel">Supprimer</button></div>
+</div>
 <label>Carburant<select id="carbu"><option>SP95-E10</option><option>SP98</option><option>Gazole</option><option>E85</option><option>GPL</option></select></label>
 <label><span id="prixl">Prix du SP95-E10</span><span class="u"><input id="prix" type="number" step="0.01" min="0" inputmode="decimal"><span>€/L</span></span></label>
-<label>Usure et entretien<span class="u"><input id="usure" type="number" step="0.01" min="0" inputmode="decimal"><span>€/km</span></span></label>
+<label>Usure et entretien<span class="u"><input id="usure" type="number" step="0.001" min="0" inputmode="decimal"><span>€/km</span></span></label>
 <label>Conso en ville<span class="u"><input id="cville" type="number" step="0.1" min="0" inputmode="decimal"><span>L/100</span></span></label>
 <label>Conso sur route<span class="u"><input id="croute" type="number" step="0.1" min="0" inputmode="decimal"><span>L/100</span></span></label>
 <label>Conso sur autoroute<span class="u"><input id="cauto" type="number" step="0.1" min="0" inputmode="decimal"><span>L/100</span></span></label>
 </fieldset>
+<details class="wiz" id="wiz">
+<summary>Calculer l'usure de ta voiture</summary>
+<p class="hint">Ne compte que ce qui s'use avec les kilomètres. Remplace les exemples par tes vraies factures.</p>
+<table class="wt">
+<thead><tr><th scope="col">Poste</th><th scope="col">Prix (€)</th><th scope="col">Durée (km)</th><th scope="col">c€/km</th></tr></thead>
+<tbody id="wbody"></tbody>
+</table>
+<fieldset class="dec">
+<legend>Décote liée aux kilomètres</legend>
+<label>Valeur actuelle<span class="u"><input id="dva" type="number" min="0" step="100" inputmode="numeric"><span>€</span></span></label>
+<label>Valeur estimée plus tard<span class="u"><input id="dvf" type="number" min="0" step="100" inputmode="numeric"><span>€</span></span></label>
+<label>Dans<span class="u"><input id="dkm" type="number" min="0" step="1000" inputmode="numeric"><span>km</span></span></label>
+<p class="wline">Décote : <b id="dout"></b></p>
+</fieldset>
+<label class="chk"><input type="checkbox" id="rev"> Je roule plus de 20 000 km par an (la révision devient un coût au km)</label>
+<div class="revp" id="revp"><label>Prix de la révision<span class="u"><input id="rvp" type="number" min="0" step="10" inputmode="numeric"><span>€</span></span></label><label>Tous les<span class="u"><input id="rvk" type="number" min="0" step="1000" inputmode="numeric"><span>km</span></span></label></div>
+<p class="wtot">Total : <b id="wtot"></b> <button type="button" id="wapp">Appliquer au profil</button></p>
+</details>
 <fieldset class="set">
 <legend>Tes critères</legend>
 <label>Péage estimé<span class="u"><input id="peage" type="number" step="0.01" min="0" inputmode="decimal"><span>€/km</span></span></label>
 <label>Ton heure vaut<span class="u"><input id="vh" type="number" step="1" min="0" inputmode="numeric"><span>€/h</span></span></label>
 </fieldset>
+</details>
 <button class="go" id="go">Comparer les itinéraires</button>
 </form>
 <p id="st" role="status"></p>

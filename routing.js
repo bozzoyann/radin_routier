@@ -1,7 +1,8 @@
 // Accès aux serveurs publics : Photon (adresses) et Valhalla FOSSGIS (itinéraires).
 
 export const VALHALLA = 'https://valhalla1.openstreetmap.de/route?json=';
-export const PHOTON = 'https://photon.komoot.io/api/?limit=1&lang=fr&lat=46.6&lon=2.4&q=';
+export const PHOTON_BASE = 'https://photon.komoot.io/api/?lang=fr&lat=46.6&lon=2.4';
+export const PHOTON = PHOTON_BASE + '&limit=1&q=';
 
 /** Délai minimal entre deux requêtes Valhalla (serveur public partagé). */
 export const DELAI_VALHALLA = 1100;
@@ -42,8 +43,29 @@ export async function geocode(q, fetchFn = fetch) {
   if (!r.ok) throw new Error('recherche d\'adresse indisponible');
   const d = await r.json(), f = d.features && d.features[0];
   if (!f) throw new Error(`lieu introuvable : « ${q} »`);
+  return lieu(f, q);
+}
+
+/** Transforme un résultat Photon en lieu : coordonnées, nom court (avec département) et précision. */
+export function lieu(f, q = '') {
   const p = f.properties || {}, dep = p.postcode ? ` (${String(p.postcode).slice(0, 2)})` : '';
-  return { lat: f.geometry.coordinates[1], lon: f.geometry.coordinates[0], name: (p.name || q) + dep };
+  const nom = p.name || [p.housenumber, p.street].filter(Boolean).join(' ') || q;
+  const ville = p.city && p.city !== nom ? p.city : '';
+  const detail = [ville, p.postcode, p.country && p.country !== 'France' ? p.country : ''].filter(Boolean).join(' · ');
+  return { lat: f.geometry.coordinates[1], lon: f.geometry.coordinates[0], name: nom + dep, detail };
+}
+
+/** Suggestions d'adresses pendant la frappe (5 au plus, doublons retirés). */
+export async function suggest(q, { signal, fetchFn = fetch } = {}) {
+  if (q.trim().length < 3 || parseLatLon(q)) return [];
+  const r = await fetchFn(`${PHOTON_BASE}&limit=6&q=${encodeURIComponent(q)}`, { signal });
+  if (!r.ok) return [];
+  const d = await r.json(), out = [], vus = new Set();
+  for (const f of d.features || []) {
+    const l = lieu(f, q), k = l.name + '|' + l.detail;
+    if (!vus.has(k)) { vus.add(k); out.push(l); }
+  }
+  return out.slice(0, 5);
 }
 
 /** Un calcul Valhalla : renvoie le trajet principal et ses variantes. */

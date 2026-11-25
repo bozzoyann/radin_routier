@@ -9,7 +9,7 @@ const RAPIDE = { auto: { use_tolls: 1, use_highways: 1 } };
 const LIBRE = { auto: { use_tolls: 0, use_highways: 0 } };
 
 /** Version affichée en haut de la page : à augmenter à chaque modification publiée. */
-export const VERSION = '1.6.2';
+export const VERSION = '1.6.3';
 export const VERSION_DATE = '25/11/2026';
 
 const $ = id => document.getElementById(id);
@@ -84,12 +84,16 @@ function render() {
   domMap = new Set(rows.filter(x => x.dom).map(x => x.i));
   // L'escalier : du plus rapide au moins cher, chaque marche faisant gagner au moins 12 % (voir cost.js escalier).
   const utiles = rows.filter(x => !x.dom).sort((a, b) => a.r.min - b.r.min);
-  const autres = rows.filter(x => x.dom).sort((a, b) => a.r.min - b.r.min);
+  const tousAutres = rows.filter(x => x.dom).sort((a, b) => a.r.min - b.r.min);
+  // Plus cher que le plus rapide : on y perd du temps ET de l'argent. Masqués (liste et carte), seulement comptés.
+  const prixRapide = utiles[0].c.eur;
+  const autres = tousAutres.filter(x => x.c.eur < prixRapide), plusChers = tousAutres.filter(x => x.c.eur >= prixRapide);
+  masques = new Set(plusChers.map(x => x.i));
   // Ton choix : le moins cher dans ta limite de temps ; à considérer : un peu au-delà (voir cost.js choixLimite).
   const cl = choixLimite(utiles.map(x => ({ min: x.r.min, eur: x.c.eur })), limite);
   const best = utiles[cl.choix], sugg = cl.suggestion >= 0 ? utiles[cl.suggestion] : null, t0 = utiles[0].r.min;
   for (const b of document.querySelectorAll('#lim button')) b.setAttribute('aria-pressed', String(b.dataset.l === (isFinite(limite) ? String(limite) : 'inf')));
-  const ordre = [...utiles, ...autres];
+  const ordre = [...utiles, ...autres, ...plusChers];
   const num = new Map(ordre.map((x, k) => [x.i, k + 1]));
 
   const carte = ({ r, i, c, dom: estDomine, domine }) => {
@@ -134,7 +138,7 @@ ${r.mixte ? `<p class="mx">🔀 ${esc(r.mixte.texte)}</p>` : ''}<p><span class="
   utiles.forEach((x, k) => { if (k) html += pas(utiles[k - 1], x); html += carte(x); });
   const nDom = autres.length;
   if (nDom) {
-    html += `<li class="more"><button type="button" id="vdom" aria-expanded="${voirDomines}">${voirDomines ? 'Masquer' : 'Voir'} ${nDom > 1 ? `les ${nDom} autres trajets` : 'l\'autre trajet'} <small>(moins intéressant${nDom > 1 ? 's' : ''})</small></button></li>`;
+    html += `<li class="more"><button type="button" id="vdom" aria-expanded="${voirDomines}">${voirDomines ? 'Masquer' : 'Voir'} ${nDom > 1 ? `les ${nDom} trajets écartés` : 'le trajet écarté'} <small>(moins cher${nDom > 1 ? 's' : ''} que le plus rapide, mais pas retenu${nDom > 1 ? 's' : ''})</small></button></li>`;
     html += autres.map(carte).join('');
   }
   // Bandeau : temps perdu, puis argent gagné, puis le trajet concerné (touchable pour le sélectionner).
@@ -144,12 +148,13 @@ ${r.mixte ? `<p class="mx">🔀 ${esc(r.mixte.texte)}</p>` : ''}<p><span class="
     ? `<p>⭐ <b>Le plus rapide est ton meilleur choix</b>${lim ? ` : en acceptant de perdre ${lim}, aucun trajet ne te fait gagner d'argent.` : '.'}</p>${lien(rapide)}`
     : `<p>⭐ <b>En acceptant de perdre ${fmtT(best.r.min - t0)}, tu gagnes ${fmtE(rapide.c.eur - best.c.eur)} !</b></p>${lien(best)}`;
   if (sugg) bandeau += `<p>💡 <b>En perdant ${fmtT(sugg.r.min - best.r.min)} de plus, tu pourrais gagner encore ${fmtE(best.c.eur - sugg.c.eur)} !</b></p>${lien(sugg)}`;
-  $('list').innerHTML = `<li class="choix">${bandeau}<p class="nb">${routes.length} trajets comparés, ${autres.length} écartés.</p></li>` + html;
+  $('list').innerHTML = `<li class="choix">${bandeau}<p class="nb">${routes.length} trajets comparés : ${utiles.length} dans l'escalier, ${autres.length} écarté${autres.length > 1 ? 's' : ''}${plusChers.length ? `, ${plusChers.length} plus cher${plusChers.length > 1 ? 's' : ''} que le plus rapide (masqué${plusChers.length > 1 ? 's' : ''})` : ''}.</p></li>` + html;
   draw();
 }
 
 const svg = $('map');
 let domMap = new Set();
+let masques = new Set();   // trajets plus chers que le plus rapide : ni dans la liste, ni sur la carte
 function draw() {
   if (!routes.length) return;
   const W = svg.clientWidth || 600, H = svg.clientHeight || 300, pad = 28;
@@ -160,10 +165,12 @@ function draw() {
   const sc = Math.min((W - 2 * pad) / ((x1 - x0) || 1), (H - 2 * pad) / ((y1 - y0) || 1));
   const ox = (W - (x1 - x0) * sc) / 2, oy = (H - (y1 - y0) * sc) / 2;
   const P = p => [ox + (p[1] * k - x0) * sc, H - oy - (p[0] - y0) * sc];
-  const order = routes.map((_, i) => i).sort((a, b) => (a === hot) - (b === hot));
-  const lines = order.map(i => {
-    const r = routes[i], step = Math.max(1, Math.floor(r.pts.length / 1500));
-    const d = r.pts.filter((_, j) => j % step === 0 || j === r.pts.length - 1).map((p, j) => (j ? 'L' : 'M') + P(p).map(v => v.toFixed(1)).join(' ')).join('');
+  const order = routes.map((_, i) => i).filter(i => !masques.has(i)).sort((a, b) => (a === hot) - (b === hot));
+  const chemin = r => { const step = Math.max(1, Math.floor(r.pts.length / 1500)); return r.pts.filter((_, j) => j % step === 0 || j === r.pts.length - 1).map((p, j) => (j ? 'L' : 'M') + P(p).map(v => v.toFixed(1)).join(' ')).join(''); };
+  // Trajets plus chers que le plus rapide : fins pointillés gris, dessous, pour montrer tout ce qui a été exploré.
+  const explores = [...masques].map(i => `<path d="${chemin(routes[i])}" fill="none" stroke="currentColor" stroke-width="1.5" stroke-dasharray="3 4" stroke-linecap="round" opacity="0.35" pointer-events="none"/>`).join('');
+  const lines = explores + order.map(i => {
+    const r = routes[i], d = chemin(r);
     const on = hot === i || (hot === -1 && !(domMap.has(i) && !voirDomines));
     // Un trait large et invisible par-dessus, pour toucher facilement le tracé au doigt.
     return `<path d="${d}" fill="none" stroke="${COLORS[i % COLORS.length]}" stroke-width="${hot === i ? 6 : 3}" stroke-linejoin="round" stroke-linecap="round" opacity="${on ? 1 : 0.2}"/>`
@@ -172,6 +179,7 @@ function draw() {
   const A = P(routes[0].pts[0]), B = P(routes[0].pts[routes[0].pts.length - 1]);
   const ink = getComputedStyle(document.body).color;
   const lab = (p, t) => { const left = p[0] > W / 2; return `<circle cx="${p[0]}" cy="${p[1]}" r="7" fill="${ink}"/><text x="${p[0] + (left ? -12 : 12)}" y="${p[1] - 10}" text-anchor="${left ? 'end' : 'start'}" font-family="Barlow Semi Condensed,sans-serif" font-weight="600" font-size="15" fill="${ink}">${esc(t)}</text>`; };
+  svg.style.color = getComputedStyle(document.body).color;
   svg.innerHTML = lines + lab(A, ends.a.name) + lab(B, ends.b.name);
 }
 new ResizeObserver(draw).observe(svg);

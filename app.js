@@ -4,13 +4,14 @@ import { PROFILES, DELAI_VALHALLA, geocode, route, suggest } from './routing.js'
 import { candidats, reglagesMixte, joindre } from './mixtes.js';
 import { villesTraversees, villesEtapes } from './villes.js';
 import { planExploration, coutPlan, produit, assembler, cleMorceau } from './explore.js';
+import { ouvragesTraverses } from './ouvrages.js';
 
 // Réglages Valhalla des deux moitiés d'un trajet mixte.
 const RAPIDE = { auto: { use_tolls: 1, use_highways: 1 } };
 const LIBRE = { auto: { use_tolls: 0, use_highways: 0 } };
 
 /** Version affichée en haut de la page : à augmenter à chaque modification publiée. */
-export const VERSION = '1.7.2';
+export const VERSION = '1.8.0';
 export const VERSION_DATE = '25/11/2026';
 
 const $ = id => document.getElementById(id);
@@ -81,6 +82,8 @@ function render() {
   save();
   if (!routes.length) return;
   const s = settings();
+  const auj = new Date();
+  for (const r of routes) if (!r.ouvrages) r.ouvrages = ouvragesTraverses(r, auj);   // ponts et tunnels : prix fixe, calculé une fois
   const rows = routes.map((r, i) => ({ r, i, c: cost(r, s) }));
   const items = rows.map(x => ({ min: x.r.min, eur: x.c.eur }));
   const dom = domines(items), garde = new Set(escalier(items));
@@ -115,13 +118,17 @@ function render() {
     if (!r.villes) r.villes = villesTraversees(r.pts);   // calculé une fois par trajet
     const via = r.villes.length ? `<span class="via">par ${r.villes.map(esc).join(' · ')}</span>` : '';
     const refs = r.refs.slice(0, 4).map(x => `<span class="c${x[0] === 'D' ? ' cD' : ''}">${esc(x)}</span>`).join('');
-    const peage = c.toll >= 0.5 ? `péage ${fmtE(c.toll)} <small>(~${Math.round(r.tollKm)} km)</small>` : 'sans péage';
+    const payants = r.ouvrages.filter(o => !o.gratuit);
+    const dont = payants.map(o => `dont ${esc(o.nom)} ${fmtEur(o.prix)}${o.verifier ? ' <span title="sources en désaccord">⚠️ à vérifier</span>' : ''}`).join(', ');
+    const gratuits = r.ouvrages.filter(o => o.gratuit).map(o => `${esc(o.nom)} gratuit dans ce sens`).join(', ');
+    const peage = c.toll >= 0.5 ? `péage ${fmtE(c.toll)} <small>(${dont || `~${Math.round(r.tollKm)} km`})</small>` : 'sans péage';
+    const notePeage = gratuits ? `<p>${gratuits}</p>` : '';
     return `<li class="row${hot === i ? ' on' : ''}${estDomine ? ' dom' : ''}" data-i="${i}" style="--rc:${COLORS[i % COLORS.length]}"${estDomine && !voirDomines ? ' hidden' : ''}>
 <div class="r1"><span class="dot" style="background:${COLORS[i % COLORS.length]}"></span><strong>Trajet ${num.get(i)}</strong><span class="te"><span class="nw">${fmtT(r.min)}</span> · <span class="nw">${fmtE(c.eur)}</span></span>${star}</div>
 <div class="refs">${via}${refs}</div>${note}
 <div class="act"><a class="btn" href="${gmaps(r)}" target="_blank" rel="noopener">Google Maps ↗</a>
 <details class="dt"><summary>Détail</summary>
-${r.mixte ? `<p class="mx">🔀 ${esc(r.mixte.texte)}</p>` : ''}<p><span class="nw">carburant ${fmtE(c.fuel)}</span> + <span class="nw">usure ${fmtE(c.wear)}</span> + <span class="nw">${peage}</span> = <b>${fmtE(c.eur)}</b></p>
+${r.mixte ? `<p class="mx">🔀 ${esc(r.mixte.texte)}</p>` : ''}<p><span class="nw">carburant ${fmtE(c.fuel)}</span> + <span class="nw">usure ${fmtE(c.wear)}</span> + <span class="nw">${peage}</span> = <b>${fmtE(c.eur)}</b></p>${notePeage}
 <p><span class="nw">${Math.round(r.km)} km :</span> <span class="nw">autoroute ${Math.round(r.hwKm)}</span> · <span class="nw">route ${Math.round(r.routeKm)}</span> · <span class="nw">ville ${Math.round(r.villeKm)}</span></p>
 <button type="button" class="btn" data-gpx="${i}">Télécharger le GPX</button>
 </details></div>

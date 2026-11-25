@@ -51,13 +51,14 @@ export function analyse(trip) {
   const km = { autoroute: 0, ville: 0, route: 0 };
   let tollKm = 0, sum = 0, avant = null;
   const ech = [];   // entrées et sorties d'autoroute : {p: [lat, lon], type: 'entree'|'sortie', at: km}
+  const peages = [];   // tronçons payants : {km, i0, i1} (indices dans pts)
   for (const m of man) {
     const L = m.length || 0, k = classe(m);
     const hw = k === 'autoroute';
     if (avant !== null && hw !== avant && pts[m.begin_shape_index]) ech.push({ p: pts[m.begin_shape_index], type: hw ? 'entree' : 'sortie', at: sum });
     avant = hw; sum += L;
     km[k] += L;
-    if (m.toll) tollKm += L;
+    if (m.toll) { tollKm += L; peages.push({ km: L, i0: m.begin_shape_index || 0, i1: m.end_shape_index || 0 }); }
   }
   const total = trip.summary.length;
   if (sum === 0) km.route = total;
@@ -67,7 +68,7 @@ export function analyse(trip) {
   return {
     km: total, min: trip.summary.time / 60,
     hwKm: km.autoroute * f, villeKm: km.ville * f, routeKm: km.route * f, tollKm: tollKm * f,
-    refs: refsOf(man), pts, ech
+    refs: refsOf(man), pts, ech, peages: peages.map(p => ({ ...p, km: p.km * f }))
   };
 }
 
@@ -83,7 +84,9 @@ export function dedupe(list, tol = 0.01) {
 /** Coût d'un trajet analysé avec les réglages `s` (voir DEF). Euros et « compromis ». */
 export function cost(r, s) {
   const litres = (r.villeKm * s.cville + r.routeKm * s.croute + r.hwKm * s.cauto) / 100;
-  const fuel = litres * s.prix, wear = r.km * s.usure, toll = r.tollKm * s.peage;
+  // Ouvrages traversés (voir ouvrages.js) : prix fixe, et leurs tronçons sortent du péage au kilomètre.
+  const ouv = r.ouvrages || [], kmOuv = ouv.reduce((t, o) => t + o.km, 0), prixOuv = ouv.reduce((t, o) => t + o.prix, 0);
+  const fuel = litres * s.prix, wear = r.km * s.usure, toll = Math.max(0, r.tollKm - kmOuv) * s.peage + prixOuv;
   const eur = fuel + wear + toll;
   return { litres, fuel, wear, toll, eur, mix: eur + r.min / 60 * s.vh };
 }

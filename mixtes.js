@@ -90,6 +90,7 @@ export function joindre(a, b, c) {
     hwKm: a.hwKm + b.hwKm, routeKm: a.routeKm + b.routeKm, villeKm: a.villeKm + b.villeKm, tollKm: a.tollKm + b.tollKm,
     refs: [...new Set([...a.refs, ...b.refs])].slice(0, 6),
     pts: [...a.pts, ...b.pts],
+    peages: [...(a.peages || []), ...(b.peages || []).map(p => ({ ...p, i0: p.i0 + a.pts.length, i1: p.i1 + a.pts.length }))],
     mixte: {
       sens: c.sens, via: c.p, kmVia: a.km,
       // ex. « Sans autoroute sur 156 km, puis A81 » ou « A10 sur 128 km, puis sans autoroute »

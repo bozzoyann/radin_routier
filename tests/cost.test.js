@@ -129,3 +129,16 @@ test('domines : plus lent ET plus cher qu\'un autre', () => {
   assert.deepEqual([...domines(t)].sort(), [3, 4]);
   assert.deepEqual([...domines([{ min: 1, eur: 1 }, { min: 1, eur: 1 }])], []); // égalité parfaite : aucun ne domine
 });
+
+import { marche } from '../cost.js';
+
+test('marche : minutes en plus, euros économisés, euros par minute', () => {
+  const autoroute = { min: 219, eur: 106 }, mixte = { min: 227, eur: 83 }, petites = { min: 309, eur: 55 };
+  const m1 = marche(autoroute, mixte, 15);
+  near(m1.dt, 8); near(m1.de, 23); near(m1.parMin, 23 / 8); assert.equal(m1.verdict, 'oui'); // 172 €/h
+  const m2 = marche(mixte, petites, 25);
+  near(m2.dt, 82); near(m2.de, 28); assert.equal(m2.verdict, 'bof');   // 20,5 €/h : entre 12,5 et 25
+  assert.equal(marche(mixte, petites, 50).verdict, 'non');             // moins de 25 €/h
+  assert.equal(marche(mixte, petites, 15).verdict, 'oui');
+  assert.equal(marche({ min: 100, eur: 50 }, { min: 100.2, eur: 40 }, 15).parMin, Infinity); // même durée
+});

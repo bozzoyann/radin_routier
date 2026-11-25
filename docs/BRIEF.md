@@ -75,13 +75,13 @@ L'écran tient en une colonne sur téléphone : la saisie, les réglages repliab
 1. **Saisie** : départ et arrivée, avec un bouton pour inverser les deux. Les adresses sont suggérées pendant la frappe (Photon), au lieu de prendre d'office le premier résultat comme le prototype.
 2. **Profil véhicule**, mémorisé, avec la possibilité d'en avoir plusieurs : nom, carburant, prix du litre, consommations ville, route et autoroute, usure. Valeurs par défaut : « Compacte essence », SP95-E10, 2,05 €/L, 7,5 / 5,5 / 6,5 L/100 km, 7 c€/km.
 3. **Assistant usure** : le tableau de la section précédente, modifiable. Chaque poste a un prix et une durée de vie en km ; la décote se calcule à partir de la valeur actuelle de la voiture et de sa valeur estimée N km plus tard. Une case « plus de 20 000 km par an » ajoute la révision. Le total remplit le champ usure du profil.
-4. **Critères** : péage estimé (0,10 €/km par défaut) et valeur de l'heure (15 €/h par défaut).
+4. **Critères** : péage estimé (0,10 €/km par défaut) et valeur de l'heure (15 €/h par défaut), formulée pour un humain : « Pour 1 h de route en plus, il faut m'économiser au moins … € ».
 5. **Liste des trajets**, une carte par trajet :
    - en gros, la durée et le total en euros ;
    - les numéros de routes, le détail carburant, usure et péage, la répartition autoroute, route et ville ;
-   - la comparaison avec le plus rapide, en €/h, en vert si elle dépasse la valeur de l'heure ;
+   - entre deux trajets successifs, une « marche » : « +8 min · −23 € », soit tant d'euros par minute en plus, avec un verdict (👍 ça vaut le coup si c'est au moins la valeur de l'heure, 😐 à toi de voir à partir de la moitié, 👎 mal payé en dessous) ;
    - les badges « le plus rapide », « le moins cher » et « meilleur compromis », à titre indicatif.
-6. **Tri** par temps, par euros ou par compromis. Le tri par défaut est à choisir : le prototype trie par compromis.
+6. **L'escalier** remplace le tri : les trajets utiles sont rangés du plus rapide au moins cher, chaque marche comparant un trajet au précédent. Les trajets plus lents et plus chers qu'un autre sont repliés. (Décision du 25 novembre 2026 : le tri par « compromis » et les €/h n'étaient pas compris.)
 7. **Carte** : un schéma SVG en première version, un vrai fond de carte ensuite. Toucher un trajet met son tracé en évidence.
 8. **Pour partir** : un lien Google Maps avec 3 points de passage et un fichier GPX pour OsmAnd ou Organic Maps. Waze n'accepte pas de points de passage dans un lien, il est donc exclu.
 9. **Confort** : des boutons d'au moins 44 px, et un affichage lisible en mode clair comme en mode sombre.

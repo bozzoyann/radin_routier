@@ -59,23 +59,18 @@
 <fieldset class="set">
 <legend>Tes critères</legend>
 <label>Péage estimé<span class="u"><input id="peage" type="number" step="0.01" min="0" inputmode="decimal"><span>€/km</span></span></label>
-<label>Ton heure vaut<span class="u"><input id="vh" type="number" step="1" min="0" inputmode="numeric"><span>€/h</span></span></label>
+<label class="vhl">Pour 1 h de route en plus, il faut m'économiser au moins<span class="u"><input id="vh" type="number" step="1" min="0" inputmode="numeric"><span>€</span></span></label>
 </fieldset>
 </details>
 <button class="go" id="go">Comparer les itinéraires</button>
 </form>
 <p id="st" role="status"></p>
 <section id="res" hidden>
-<div class="sort" role="group" aria-label="Trier par"><b>Trier par</b>
-<button type="button" data-s="temps" aria-pressed="false">Temps</button>
-<button type="button" data-s="euros" aria-pressed="false">Euros</button>
-<button type="button" data-s="mix" aria-pressed="true">Compromis</button>
-</div>
 <div class="fig"><svg id="map" role="img" aria-label="Carte schématique des itinéraires"></svg></div>
 <ul id="list"></ul>
 </section>
 <footer>
-<p>Euros = carburant + usure + péage. « Compromis » ajoute le temps au prix de ton heure. La consommation est calculée tronçon par tronçon : autoroute, ville (moins de 50 km/h de moyenne) ou route. Prix du carburant indicatif (moyenne E10 début novembre 2026), à ajuster. Les durées sont calculées sans trafic. Le péage est estimé au kilomètre sur les tronçons payants : c'est une approximation, pas le tarif exact de la barrière.</p>
+<p>Euros = carburant + usure + péage. Les trajets sont rangés du plus rapide au moins cher : chaque marche dit combien de minutes tu ajoutes et combien d'euros tu économises. « Meilleur choix pour toi » tient compte de ce que tu demandes pour 1 h de route en plus. La consommation est calculée tronçon par tronçon : autoroute, ville (moins de 50 km/h de moyenne) ou route. Prix du carburant indicatif (moyenne E10 début novembre 2026), à ajuster. Les durées sont calculées sans trafic. Le péage est estimé au kilomètre sur les tronçons payants : c'est une approximation, pas le tarif exact de la barrière.</p>
 <p>Itinéraires : <a href="https://valhalla.github.io/valhalla/">Valhalla</a> (serveur FOSSGIS). Adresses : <a href="https://photon.komoot.io">Photon</a>. Données © contributeurs <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>.</p>
 </footer>
 </main>

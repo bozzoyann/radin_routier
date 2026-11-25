@@ -1,5 +1,5 @@
 // Interface : saisie, réglages, liste des trajets, carte schématique, exports.
-import { DEF, USURE_DEF, usureParKm, analyse, dedupe, cost, tauxHoraire, along, domines } from './cost.js';
+import { DEF, USURE_DEF, usureParKm, analyse, dedupe, cost, along, domines, marche } from './cost.js';
 import { PROFILES, DELAI_VALHALLA, geocode, route, suggest } from './routing.js';
 
 const $ = id => document.getElementById(id);
@@ -13,7 +13,7 @@ let prices = {};               // prix du litre par carburant, partagé entre le
 let profils = null;            // {list: [{id, nom, carbu, usure, cville, croute, cauto, wiz}], actif}
 let choix = { from: null, to: null };   // lieux choisis dans les suggestions
 const suggTimer = {};                   // délais de frappe en cours, par champ
-let routes = [], ends = null, sortBy = 'mix', hot = -1, voirDomines = false;
+let routes = [], ends = null, hot = -1, voirDomines = false;
 
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const store = {
@@ -54,49 +54,69 @@ function gpx(r, i) {
   a.download = `trajet-${i + 1}.gpx`; document.body.appendChild(a); a.click(); a.remove();
 }
 
+const fmtEur = v => `${v.toFixed(2).replace('.', ',')} €`;
+const VERDICT = {
+  oui: ['y', '👍', 'ça vaut le coup'],
+  bof: ['m', '😐', 'à toi de voir'],
+  non: ['n', '👎', 'mal payé']
+};
+
 function render() {
   save();
   if (!routes.length) return;
   const s = settings();
   const rows = routes.map((r, i) => ({ r, i, c: cost(r, s) }));
-  const fast = rows.reduce((a, b) => b.r.min < a.r.min ? b : a);
-  const cheap = rows.reduce((a, b) => b.c.eur < a.c.eur ? b : a);
-  const best = rows.reduce((a, b) => b.c.mix < a.c.mix ? b : a);
-  const key = { temps: x => x.r.min, euros: x => x.c.eur, mix: x => x.c.mix }[sortBy];
   const dom = domines(rows.map(x => ({ min: x.r.min, eur: x.c.eur })));
   rows.forEach((x, j) => { x.dom = dom.has(j); });
   domMap = new Set(rows.filter(x => x.dom).map(x => x.i));
-  rows.sort((a, b) => (a.dom - b.dom) || (key(a) - key(b)));
-  const carte = ({ r, i, c, dom: estDomine }) => {
-    const badges = [fast.i === i ? 'Le plus rapide' : '', cheap.i === i ? 'Le moins cher' : '', best.i === i ? 'Meilleur compromis' : ''].filter(Boolean)
-      .map(b => `<span class="bdg">${b}</span>`).join('');
+  // L'escalier : les trajets utiles, du plus rapide au moins cher (plus lent = forcément moins cher).
+  const utiles = rows.filter(x => !x.dom).sort((a, b) => a.r.min - b.r.min);
+  const autres = rows.filter(x => x.dom).sort((a, b) => a.r.min - b.r.min);
+  const best = utiles.reduce((a, b) => b.c.mix < a.c.mix ? b : a);
+  const ordre = [...utiles, ...autres];
+  const num = new Map(ordre.map((x, k) => [x.i, k + 1]));
+
+  const carte = ({ r, i, c, dom: estDomine }, k) => {
+    const badges = [
+      k === 0 ? 'Le plus rapide' : '',
+      !estDomine && k === utiles.length - 1 && k > 0 ? 'Le moins cher' : '',
+      best.i === i ? '⭐ Meilleur choix pour toi' : ''
+    ].filter(Boolean).map(b => `<span class="bdg${b[0] === '⭐' ? ' star' : ''}">${b}</span>`).join('');
     const kind = r.tollKm > 1 ? `<span class="kind kA">Péage ~${Math.round(r.tollKm)} km</span>` : `<span class="kind kN">Sans péage</span>`;
-    let dl;
-    if (i === fast.i) dl = 'Référence : c\'est le trajet le plus rapide.';
-    else {
-      const dt = r.min - fast.r.min, de = fast.c.eur - c.eur;
-      const rate = tauxHoraire({ eur: c.eur, min: r.min }, { eur: fast.c.eur, min: fast.r.min });
-      if (rate === null) dl = `<span class="n">+${fmtT(dt)} et +${fmtE(-de)}</span> par rapport au plus rapide : aucun intérêt.`;
-      else {
-        const ok = rate >= s.vh;
-        dl = `+${fmtT(Math.max(dt, 0))} pour <b>${fmtE(de)} économisés</b>, soit <span class="${ok ? 'y' : 'n'}">${isFinite(rate) ? Math.round(rate) + ' €/h' : 'gratuit'}</span> ${ok ? '(mieux payé que ton heure)' : '(moins que ton heure)'}.`;
-      }
+    let note = '';
+    if (estDomine) {
+      const meilleur = utiles.find(u => u.r.min <= r.min && u.c.eur <= c.eur);
+      note = `<div class="dl"><span class="n">Plus lent et plus cher que le trajet ${num.get(meilleur.i)}.</span></div>`;
     }
     const refs = r.refs.map(x => `<span class="c${x[0] === 'D' ? ' cD' : ''}">${esc(x)}</span>`).join('');
     return `<li class="row${hot === i ? ' on' : ''}${estDomine ? ' dom' : ''}" data-i="${i}"${estDomine && !voirDomines ? ' hidden' : ''}>
-<div class="r1"><span class="dot" style="background:${COLORS[i % COLORS.length]}"></span><strong>Trajet ${i + 1}</strong>${kind}${badges}</div>
+<div class="r1"><span class="dot" style="background:${COLORS[i % COLORS.length]}"></span><strong>Trajet ${num.get(i)}</strong>${kind}${badges}</div>
 <div class="big"><span class="t">${fmtT(r.min)}</span><span class="e">${fmtE(c.eur)}</span></div>
 <div class="refs">${refs}</div>
 <div class="det"><span class="nw">${Math.round(r.km)} km</span> · <span class="nw">carburant ${fmtE(c.fuel)}</span> · <span class="nw">usure ${fmtE(c.wear)}</span> · <span class="nw">péage ${fmtE(c.toll)}</span></div>
 <div class="mixl"><span class="nw">autoroute ${Math.round(r.hwKm)} km</span> · <span class="nw">route ${Math.round(r.routeKm)} km</span> · <span class="nw">ville ${Math.round(r.villeKm)} km</span></div>
-<div class="dl">${dl}</div>
-<div class="act"><a class="btn" href="${gmaps(r)}" target="_blank" rel="noopener">Google Maps ↗</a><button type="button" class="btn" data-gpx="${i}">GPX</button></div>
+${note}<div class="act"><a class="btn" href="${gmaps(r)}" target="_blank" rel="noopener">Google Maps ↗</a><button type="button" class="btn" data-gpx="${i}">GPX</button></div>
 </li>`;
   };
-  const nDom = rows.filter(x => x.dom).length;
-  const bascule = nDom ? `<li class="more"><button type="button" id="vdom" aria-expanded="${voirDomines}">${voirDomines ? 'Masquer' : 'Voir'} ${nDom} trajet${nDom > 1 ? 's' : ''} sans intérêt <small>(plus lent${nDom > 1 ? 's' : ''} et plus cher${nDom > 1 ? 's' : ''} qu'un autre)</small></button></li>` : '';
-  const html = rows.map(carte), k = rows.length - nDom;
-  $('list').innerHTML = html.slice(0, k).join('') + bascule + html.slice(k).join('');
+
+  // Une marche entre deux trajets successifs de l'escalier.
+  const pas = (haut, bas) => {
+    const m = marche({ min: haut.r.min, eur: haut.c.eur }, { min: bas.r.min, eur: bas.c.eur }, s.vh);
+    const [cls, ico, mot] = VERDICT[m.verdict];
+    const temps = m.dt > 0.5 ? `+${fmtT(m.dt)}` : 'même durée';
+    const taux = isFinite(m.parMin) ? `${fmtEur(m.parMin)} par minute en plus` : 'sans perdre de temps';
+    return `<li class="step ${cls}" aria-label="Du trajet ${num.get(haut.i)} au trajet ${num.get(bas.i)}">
+<span class="arr" aria-hidden="true">▼</span><span class="sd"><b>${temps}</b> · <b>−${fmtE(m.de)}</b></span><span class="sr">${taux} ${ico} ${mot}</span></li>`;
+  };
+
+  let html = '';
+  utiles.forEach((x, k) => { if (k) html += pas(utiles[k - 1], x); html += carte(x, k); });
+  const nDom = autres.length;
+  if (nDom) {
+    html += `<li class="more"><button type="button" id="vdom" aria-expanded="${voirDomines}">${voirDomines ? 'Masquer' : 'Voir'} ${nDom} trajet${nDom > 1 ? 's' : ''} sans intérêt <small>(plus lent${nDom > 1 ? 's' : ''} et plus cher${nDom > 1 ? 's' : ''} qu'un autre)</small></button></li>`;
+    html += autres.map((x, k) => carte(x, utiles.length + k)).join('');
+  }
+  $('list').innerHTML = html;
   draw();
 }
 
@@ -301,12 +321,6 @@ const od = store.get('vpt-od');
 if (od) { $('from').value = od.from || ''; $('to').value = od.to || ''; choix = { from: od.cfrom || null, to: od.cto || null }; }
 $('f').addEventListener('submit', run);
 $('swap').addEventListener('click', () => { const t = $('from').value; $('from').value = $('to').value; $('to').value = t; choix = { from: choix.to, to: choix.from }; });
-document.querySelector('.sort').addEventListener('click', e => {
-  const b = e.target.closest('button[data-s]'); if (!b) return;
-  sortBy = b.dataset.s;
-  for (const x of document.querySelectorAll('.sort button')) x.setAttribute('aria-pressed', String(x === b));
-  render();
-});
 $('list').addEventListener('click', e => {
   if (e.target.closest('#vdom')) { voirDomines = !voirDomines; render(); return; }
   const g = e.target.closest('[data-gpx]'); if (g) { gpx(routes[+g.dataset.gpx], +g.dataset.gpx); return; }

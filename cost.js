@@ -142,3 +142,17 @@ export function domines(items) {
   });
   return out;
 }
+
+/**
+ * Une marche de l'escalier : passer du trajet `haut` (plus rapide) au trajet `bas` (moins cher).
+ * Renvoie les minutes en plus, les euros économisés, les euros gagnés par minute en plus
+ * et un verdict par rapport au seuil de l'utilisateur (€ à économiser pour 1 h de route en plus) :
+ * 'oui' si la minute est payée au moins au seuil, 'bof' à partir de la moitié, 'non' en dessous.
+ */
+export function marche(haut, bas, seuil) {
+  const dt = bas.min - haut.min, de = haut.eur - bas.eur;
+  const parMin = dt > 0.5 ? de / dt : Infinity;
+  const parHeure = parMin * 60;
+  const verdict = parHeure >= seuil ? 'oui' : parHeure >= seuil / 2 ? 'bof' : 'non';
+  return { dt, de, parMin, verdict };
+}

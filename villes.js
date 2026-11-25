@@ -25,7 +25,7 @@ export function villesTraversees(pts, { rayon = 5, marge = 15, max = 3, ecart = 
     let best = Infinity, at = 0;
     for (let j = 1; j < R.length; j++) {
       const d = dSegment(v, R[j - 1], R[j]);
-      if (d < best) { best = d; at = cum[j]; }
+      if (d < best) { best = d; at = cum[j - 1] + Math.sqrt(Math.max(0, dkm(R[j - 1], v) ** 2 - d * d)); }   // position du point le plus proche
     }
     if (best <= rayon) trouvees.push({ nom, pop, at });
   }
@@ -51,7 +51,10 @@ export function villesEtapes(routes, { n = 2, popMin = 50000, de = 0.3, a = 0.8,
     for (const [nom, la, lo, pop] of villes) {
       if (pop < popMin || vues.has(nom)) continue;
       let best = Infinity, at = 0;
-      for (let j = 1; j < R.length; j++) { const d = dSegment([la, lo], R[j - 1], R[j]); if (d < best) { best = d; at = cum[j]; } }
+      for (let j = 1; j < R.length; j++) {
+        const d = dSegment([la, lo], R[j - 1], R[j]);
+        if (d < best) { best = d; at = cum[j - 1] + Math.sqrt(Math.max(0, dkm(R[j - 1], [la, lo]) ** 2 - d * d)); }
+      }
       if (best <= rayon && at / L >= de && at / L <= a) vues.set(nom, { nom, lat: la, lon: lo, pop });
     }
   }

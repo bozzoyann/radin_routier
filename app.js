@@ -3,13 +3,14 @@ import { DEF, USURE_DEF, usureParKm, analyse, dedupe, cost, along, domines, marc
 import { PROFILES, DELAI_VALHALLA, geocode, route, suggest } from './routing.js';
 import { candidats, reglagesMixte, joindre } from './mixtes.js';
 import { villesTraversees, villesEtapes } from './villes.js';
+import { planExploration, coutPlan, produit, assembler, cleMorceau } from './explore.js';
 
 // Réglages Valhalla des deux moitiés d'un trajet mixte.
 const RAPIDE = { auto: { use_tolls: 1, use_highways: 1 } };
 const LIBRE = { auto: { use_tolls: 0, use_highways: 0 } };
 
 /** Version affichée en haut de la page : à augmenter à chaque modification publiée. */
-export const VERSION = '1.6.3';
+export const VERSION = '1.7.0';
 export const VERSION_DATE = '25/11/2026';
 
 const $ = id => document.getElementById(id);
@@ -25,6 +26,8 @@ let profils = null;            // {list: [{id, nom, carbu, usure, cville, croute
 let choix = { from: null, to: null };   // lieux choisis dans les suggestions
 const suggTimer = {};                   // délais de frappe en cours, par champ
 let routes = [], ends = null, hot = -1, voirDomines = false;
+let trouves = [];                 // tous les trajets calculés pour la recherche en cours
+let expl = { etat: 'aucun' };     // exploration approfondie : aucun, pret, encours, fini
 let limite = LIMITE_DEF;   // temps en plus accepté (minutes), Infinity : peu importe
 
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -97,7 +100,8 @@ function render() {
   const num = new Map(ordre.map((x, k) => [x.i, k + 1]));
 
   const carte = ({ r, i, c, dom: estDomine, domine }) => {
-    const star = best.i === i ? '<span class="bdg star">⭐ Ton choix</span>' : sugg && sugg.i === i ? '<span class="bdg idee">💡 À considérer</span>' : '';
+    const star = (best.i === i ? '<span class="bdg star">⭐ Ton choix</span>' : sugg && sugg.i === i ? '<span class="bdg idee">💡 À considérer</span>' : '')
+      + (r.explore ? '<span class="bdg neuf">🆕 Exploration</span>' : '');
     let note = '';
     if (domine) {
       const meilleur = utiles.find(u => u.r.min <= r.min && u.c.eur <= c.eur) || rows.find(u => !u.domine && u.r.min <= r.min && u.c.eur <= c.eur);
@@ -137,6 +141,7 @@ ${r.mixte ? `<p class="mx">🔀 ${esc(r.mixte.texte)}</p>` : ''}<p><span class="
   let html = '';
   utiles.forEach((x, k) => { if (k) html += pas(utiles[k - 1], x); html += carte(x); });
   const nDom = autres.length;
+  html += blocExploration(utiles.filter(x => x.r.explore).length);
   if (nDom) {
     html += `<li class="more"><button type="button" id="vdom" aria-expanded="${voirDomines}">${voirDomines ? 'Masquer' : 'Voir'} ${nDom > 1 ? `les ${nDom} trajets écartés` : 'le trajet écarté'} <small>(moins cher${nDom > 1 ? 's' : ''} que le plus rapide, mais pas retenu${nDom > 1 ? 's' : ''})</small></button></li>`;
     html += autres.map(carte).join('');
@@ -184,6 +189,52 @@ function draw() {
 }
 new ResizeObserver(draw).observe(svg);
 
+// ---------- Exploration approfondie (bouton « Explorer encore ») ----------
+function blocExploration(nouveaux) {
+  if (expl.etat === 'pret') {
+    const n = coutPlan(planExploration(trouves, ends.a, ends.b));
+    if (!n) return '';
+    return `<li class="explo"><button type="button" id="explo">🔍 Explorer encore <small>(≈ ${String(Math.max(0.5, Math.round(n * 1.5 / 30) / 2)).replace('.', ',')} min, ${n} calculs de plus)</small></button></li>`;
+  }
+  if (expl.etat === 'encours') {
+    const pc = Math.round(100 * expl.fait / Math.max(1, expl.total));
+    return `<li class="explo"><p>🔍 Exploration : ${pc} % · ${expl.testes} trajets testés${nouveaux ? ` · <b>${nouveaux} nouveau${nouveaux > 1 ? 'x' : ''} 🆕</b>` : ''}</p>
+<div class="barre"><span style="width:${pc}%"></span></div><button type="button" id="stopx">Arrêter</button></li>`;
+  }
+  if (expl.etat === 'fini') {
+    return `<li class="explo"><p>${nouveaux ? `✅ Exploration terminée : <b>${nouveaux} nouveau${nouveaux > 1 ? 'x' : ''} trajet${nouveaux > 1 ? 's' : ''} 🆕</b>` : '✅ Exploration terminée : rien de mieux à trouver'}, ${expl.testes} trajets de plus testés${expl.stop ? ' (arrêtée avant la fin)' : ''}.</p></li>`;
+  }
+  return '';
+}
+
+async function explorer() {
+  const moi = expl = { etat: 'encours', fait: 0, testes: 0, total: 0, stop: false };
+  const plan = planExploration(trouves, ends.a, ends.b);
+  moi.total = coutPlan(plan);
+  const cache = new Map();
+  const morceau = async (de, vers, prof) => {
+    const k = cleMorceau(de, vers, prof);
+    if (!cache.has(k)) {
+      await sleep(DELAI_VALHALLA);
+      let res = [];
+      try { res = (await route(de, vers, prof)).map(analyse); } catch (err) { /* morceau impossible : ignoré */ }
+      cache.set(k, res); moi.fait++;
+    }
+    return cache.get(k);
+  };
+  render();
+  for (const comb of plan) {
+    if (moi.stop || expl !== moi) break;
+    const listes = [];
+    for (const m of comb.morceaux) { listes.push(await morceau(...m)); if (moi.stop || expl !== moi) break; }
+    if (moi.stop || expl !== moi) break;
+    for (const parts of produit(listes)) { trouves.push(assembler(parts, comb)); moi.testes++; }
+    routes = dedupe(trouves).sort((x, y) => x.min - y.min);
+    render();
+  }
+  if (expl === moi) { moi.etat = 'fini'; render(); }
+}
+
 async function run(e) {
   e.preventDefault();
   const st = $('st'), go = $('go'); st.className = ''; go.disabled = true;
@@ -197,7 +248,10 @@ async function run(e) {
     choix = { from: a, to: b };
     store.set('vpt-od', { from: $('from').value, to: $('to').value, cfrom: a, cto: b });
     ends = { a, b }; hot = -1; routes = [];
+    if (expl.etat === 'encours') expl.stop = true;   // une nouvelle recherche arrête l'exploration en cours
+    expl = { etat: 'aucun' };
     const found = []; let fails = 0;
+    trouves = found;
     for (let p = 0; p < PROFILES.length; p++) {
       st.textContent = `Calcul des itinéraires ${p + 1}/${PROFILES.length}…`;
       try {
@@ -243,6 +297,7 @@ async function run(e) {
     }
     const sec = Math.round((performance.now() - t0) / 1000);
     st.textContent = `${a.name} → ${b.name} : ${routes.length} itinéraires différents en ${sec} s${fails ? ` (${fails} calcul${fails > 1 ? 's' : ''} en échec)` : ''}.`;
+    expl = { etat: 'pret' }; render();
   } catch (err) {
     st.className = 'err'; st.textContent = 'Oups : ' + (err && err.message ? err.message : 'erreur réseau') + '.';
   } finally { go.disabled = false; }
@@ -398,6 +453,8 @@ $('f').addEventListener('submit', run);
 $('swap').addEventListener('click', () => { const t = $('from').value; $('from').value = $('to').value; $('to').value = t; choix = { from: choix.to, to: choix.from }; });
 $('list').addEventListener('click', e => {
   if (e.target.closest('#vdom')) { voirDomines = !voirDomines; render(); return; }
+  if (e.target.closest('#explo')) { explorer(); return; }
+  if (e.target.closest('#stopx')) { expl.stop = true; return; }
   const sel = e.target.closest('[data-sel]');
   if (sel) {
     hot = +sel.dataset.sel; render();

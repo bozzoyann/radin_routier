@@ -19,9 +19,9 @@ test('routeUrl : requête GET Valhalla complète', () => {
   assert.equal(JSON.parse(decodeURIComponent(routeUrl({ lat: 1, lon: 2 }, { lat: 3, lon: 4 }, PROFILES[1]).slice(VALHALLA.length))).alternates, undefined);
 });
 
-test('PROFILES : 6 réglages distincts', () => {
-  assert.equal(PROFILES.length, 6);
-  assert.equal(new Set(PROFILES.map(p => JSON.stringify(p.auto))).size, 6);
+test('PROFILES : 10 réglages distincts', () => {
+  assert.equal(PROFILES.length, 10);
+  assert.equal(new Set(PROFILES.map(p => JSON.stringify(p.auto))).size, 10);
 });
 
 const fakeFetch = (status, body) => async () => ({ ok: status < 400, status, json: async () => { if (body === undefined) throw new Error('pas JSON'); return body; } });

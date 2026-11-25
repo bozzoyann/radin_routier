@@ -53,6 +53,17 @@ test('analyse : répartition et recalage sur la distance du résumé', () => {
   assert.equal(r.pts.length, 2);
 });
 
+test('analyse : entrées et sorties d\'autoroute', () => {
+  const shape = encode([[0, 0], [0, 0.1], [0, 0.2], [0, 0.3]]);
+  const r = analyse(trip([
+    { length: 10, time: 600, begin_shape_index: 0 },                 // route
+    { length: 80, time: 2400, highway: true, begin_shape_index: 1 }, // on monte sur l'autoroute
+    { length: 20, time: 900, begin_shape_index: 2 }                  // on en descend
+  ], { length: 110, time: 3900 }, shape));
+  assert.deepEqual(r.ech.map(e => [e.type, e.at]), [['entree', 10], ['sortie', 90]]);
+  assert.deepEqual(r.ech[0].p, [0, 0.1]);
+});
+
 test('analyse : péage signalé sans manœuvre marquée → kilomètres d\'autoroute', () => {
   const r = analyse(trip([{ length: 80, time: 2400, highway: true }, { length: 20, time: 900 }], { length: 100, time: 3300, has_toll: true }));
   near(r.tollKm, 80);

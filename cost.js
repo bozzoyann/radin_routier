@@ -45,14 +45,18 @@ export function refsOf(man, minKm = 5, max = 6) {
   return [...seen.entries()].filter(([, km]) => km >= minKm).sort((a, b) => b[1] - a[1]).slice(0, max).map(([k]) => k);
 }
 
-/** Résume un trajet Valhalla : distances par type de route, péage, durée, tracé. */
+/** Résume un trajet Valhalla : distances par type de route, péage, durée, tracé, entrées et sorties d'autoroute. */
 export function analyse(trip) {
-  const leg = trip.legs[0], man = leg.maneuvers || [];
+  const leg = trip.legs[0], man = leg.maneuvers || [], pts = decode(leg.shape);
   const km = { autoroute: 0, ville: 0, route: 0 };
-  let tollKm = 0, sum = 0;
+  let tollKm = 0, sum = 0, avant = null;
+  const ech = [];   // entrées et sorties d'autoroute : {p: [lat, lon], type: 'entree'|'sortie', at: km}
   for (const m of man) {
-    const L = m.length || 0; sum += L;
-    km[classe(m)] += L;
+    const L = m.length || 0, k = classe(m);
+    const hw = k === 'autoroute';
+    if (avant !== null && hw !== avant && pts[m.begin_shape_index]) ech.push({ p: pts[m.begin_shape_index], type: hw ? 'entree' : 'sortie', at: sum });
+    avant = hw; sum += L;
+    km[k] += L;
     if (m.toll) tollKm += L;
   }
   const total = trip.summary.length;
@@ -63,7 +67,7 @@ export function analyse(trip) {
   return {
     km: total, min: trip.summary.time / 60,
     hwKm: km.autoroute * f, villeKm: km.ville * f, routeKm: km.route * f, tollKm: tollKm * f,
-    refs: refsOf(man), pts: decode(leg.shape)
+    refs: refsOf(man), pts, ech
   };
 }
 

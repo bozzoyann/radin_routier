@@ -130,6 +130,11 @@ La v1 est terminée quand, sur téléphone, Toulouse → Lyon affiche au moins 3
 
 - [x] Après les trajets mixtes, choisir 2 grandes villes (50 000 habitants et plus) traversées entre 30 et 80 % d'un trajet trouvé, espacées de 50 km. Pour chacune : variantes du premier morceau (rapide avec variantes, péage modéré), puis le plus rapide jusqu'à l'arrivée. 6 requêtes, environ 7 s. Sur un long trajet, le serveur ignore des variantes qu'il propose sur un morceau plus court.
 
+**v1.7 : profils en plus et exploration approfondie (fait)**
+
+- [x] Banc d'essai sur 2 trajets (environ 140 requêtes) de 4 générateurs : entrées et sorties d'autoroute, double bascule, 5 villes étapes avec variantes des deux côtés, profils supplémentaires. Seuls les profils (péage faible, autoroute modérée) ont ajouté un trajet utile : ils rejoignent la recherche normale (10 profils, environ 35 s).
+- [x] Les trois autres générateurs forment un bouton « Explorer encore » (environ 55 calculs, 1 min 30), avec progression, bouton Arrêter et nouveaux trajets marqués 🆕. Chaque morceau de trajet n'est calculé qu'une fois et resservi dans toutes les combinaisons.
+
 **v2 : des chiffres plus justes**
 
 - [ ] Prix du carburant du jour, récupéré dans les données publiques des prix des carburants.

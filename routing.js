@@ -7,14 +7,19 @@ export const PHOTON = PHOTON_BASE + '&limit=1&q=';
 /** Délai minimal entre deux requêtes Valhalla (serveur public partagé). */
 export const DELAI_VALHALLA = 1100;
 
-/** 6 réglages pour obtenir des trajets variés. Les plus contrastés d'abord, pour afficher vite des choix différents. */
+/** 10 réglages pour obtenir des trajets variés. Les plus contrastés d'abord, pour afficher vite des choix différents. */
 export const PROFILES = [
   { auto: { use_tolls: 1, use_highways: 1 }, alt: 2 },
   { auto: { use_tolls: 0, use_highways: 0 }, alt: 0 },
   { auto: { use_tolls: 0, use_highways: 1 }, alt: 1 },
   { auto: { shortest: true }, alt: 0 },
   { auto: { use_tolls: 0.5, use_highways: 1 }, alt: 0 },
-  { auto: { use_tolls: 0, use_highways: 0.4 }, alt: 0 }
+  { auto: { use_tolls: 0, use_highways: 0.4 }, alt: 0 },
+  // Ajoutés en v1.7 après un banc d'essai : péage faible ou autoroute modérée, avec variantes.
+  { auto: { use_tolls: 0.2, use_highways: 1 }, alt: 2 },
+  { auto: { use_tolls: 1, use_highways: 0.6 }, alt: 2 },
+  { auto: { use_tolls: 0.2, use_highways: 0.6 }, alt: 2 },
+  { auto: { use_tolls: 1, use_highways: 0.2 }, alt: 2 }
 ];
 
 /** Lit « lat, lon » saisi directement. Renvoie null si ce n'en est pas. */

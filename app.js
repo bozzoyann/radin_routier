@@ -13,7 +13,7 @@ const RAPIDE = { auto: { use_tolls: 1, use_highways: 1 } };
 const LIBRE = { auto: { use_tolls: 0, use_highways: 0 } };
 
 /** Version affichée en haut de la page : à augmenter à chaque modification publiée. */
-export const VERSION = '1.14.2';
+export const VERSION = '1.15.0';
 export const VERSION_DATE = '25/11/2026';
 
 const $ = id => document.getElementById(id);
@@ -31,6 +31,8 @@ const suggTimer = {};                   // délais de frappe en cours, par champ
 let routes = [], ends = null, hot = -1, voirDomines = false;
 let trouves = [];                 // tous les trajets calculés pour la recherche en cours
 let expl = { etat: 'aucun' };     // exploration approfondie : aucun, pret, encours, fini
+let rech = { etat: 'aucune' };    // recherche normale : aucune, encours (libelle, fait, total), fini (sec, echecs)
+let derniersNeufs = 0;            // trajets de l'exploration dans l'escalier, au dernier affichage
 let dejaFete = 0;                 // nombre de trouvailles déjà fêtées (une montagne de billets par nouvelle trouvaille)
 let limite = LIMITE_DEF;   // temps en plus accepté (minutes), Infinity : peu importe
 
@@ -192,13 +194,14 @@ ${r.mixte ? `<p class="mx">🔀 ${esc(r.mixte.texte)}</p>` : ''}<p><span class="
   if (sugg) bandeau += `<p>💡 <b>En perdant ${fmtT(sugg.r.min - best.r.min)} de plus, tu pourrais gagner encore ${fmtE(best.c.eur - sugg.c.eur)} !</b></p>${lien(sugg)}`;
   // Trouvaille de l'exploration : mise en avant (et montagne de billets la première fois).
   const neufs = utiles.filter(x => x.r.explore);
+  derniersNeufs = neufs.length;
   if (neufs.length) {
     const top = [best, sugg].find(x => x && x.r.explore) || neufs.reduce((p, q) => q.c.eur < p.c.eur ? q : p);
     const role = top === best ? ' Et c\'est ton meilleur choix ! 🏆' : top === sugg ? ' C\'est même celui à considérer 💡' : '';
     bandeau = `<p class="trouve">🆕 <b>L'exploration a déniché ${neufs.length > 1 ? `${neufs.length} trajets` : 'un trajet'} que personne ne voyait !</b>${role}</p>${lien(top)}` + bandeau;
     if (neufs.length > dejaFete) { dejaFete = neufs.length; pluieDeBillets(); }
   }
-  $('list').innerHTML = `<li class="choix${neufs.length ? ' bravo' : ''}">${bandeau}<p class="nb">${routes.length} trajets comparés : ${utiles.length} dans l'escalier, ${autres.length} variante${autres.length > 1 ? 's' : ''} intermédiaire${autres.length > 1 ? 's' : ''}${plusChers.length ? `, ${plusChers.length} sans intérêt (en pointillés sur la carte)` : ''}.</p></li>` + blocExploration(neufs.length) + html;
+  $('list').innerHTML = `<li class="choix${neufs.length ? ' bravo' : ''}">${bandeau}<p class="nb">${routes.length} trajets comparés : ${utiles.length} dans l'escalier${autres.length ? `, ${autres.length} variante${autres.length > 1 ? 's' : ''} intermédiaire${autres.length > 1 ? 's' : ''}` : ''}${plusChers.length ? `, ${plusChers.length} sans intérêt (en pointillés sur la carte)` : ''}.</p>${blocAvancement(neufs.length)}</li>` + html;
   draw();
 }
 
@@ -273,22 +276,28 @@ export function pluieDeBillets() {
 }
 
 // ---------- Exploration approfondie (bouton « Explorer encore ») ----------
-function blocExploration(nouveaux) {
-  if (expl.etat === 'pret') {
-    const n = coutPlan(planExploration(trouves, ends.a, ends.b));
-    if (!n) return '';
-    return `<li class="explo"><button type="button" id="explo">🔍 Explorer encore <small>(≈ ${String(Math.max(0.5, Math.round(n * 1.5 / 30) / 2)).replace('.', ',')} min, ${n} calculs de plus)</small></button></li>`;
-  }
-  if (expl.etat === 'encours') {
+// Avancement de la recherche puis de l'exploration : un seul bloc, en bas de la synthèse, avec barre.
+const barre = (pc, txt, bouton = '') => `<div class="avance"><p>${txt}</p><div class="barre"><span style="width:${pc}%"></span></div>${bouton}</div>`;
+function blocAvancement(nouveaux = derniersNeufs) {
+  let h = '';
+  if (rech.etat === 'encours') {
+    const pc = Math.min(99, Math.round(100 * rech.fait / Math.max(1, rech.total)));
+    h = barre(pc, `🔍 ${rech.libelle} <span class="pc">${pc} %</span>`);
+  } else if (expl.etat === 'encours') {
     const pc = Math.round(100 * expl.fait / Math.max(1, expl.total));
-    return `<li class="explo"><p>🔍 Exploration : ${pc} % · ${expl.testes} trajets testés${nouveaux ? ` · <b>${nouveaux} nouveau${nouveaux > 1 ? 'x' : ''} 🆕</b>` : ''}</p>
-<div class="barre"><span style="width:${pc}%"></span></div><button type="button" id="stopx">Arrêter</button></li>`;
+    h = barre(pc, `🔍 Exploration : ${expl.testes} trajets testés${nouveaux ? ` · <b>${nouveaux} nouveau${nouveaux > 1 ? 'x' : ''} 🆕</b>` : ''} <span class="pc">${pc} %</span>`, '<button type="button" id="stopx">Arrêter</button>');
+  } else if (rech.etat === 'fini') {
+    const fin = `✅ Recherche terminée en ${rech.sec} s${rech.echecs ? ` (${rech.echecs} calcul${rech.echecs > 1 ? 's' : ''} en échec)` : ''}.`;
+    if (expl.etat === 'fini') {
+      h = `<p>${nouveaux ? `✅ Exploration terminée : <b>${nouveaux} nouveau${nouveaux > 1 ? 'x' : ''} trajet${nouveaux > 1 ? 's' : ''} 🆕</b>` : '✅ Exploration terminée : rien de mieux à trouver'}, ${expl.testes} trajets de plus testés${expl.stop ? ' (arrêtée avant la fin)' : ''}.</p>`;
+    } else {
+      const n = expl.etat === 'pret' ? coutPlan(planExploration(trouves, ends.a, ends.b)) : 0;
+      h = `<p>${fin}</p>` + (n ? `<button type="button" id="explo">🔍 Explorer encore <small>(≈ ${String(Math.max(0.5, Math.round(n * 1.5 / 30) / 2)).replace('.', ',')} min, ${n} calculs de plus)</small></button>` : '');
+    }
   }
-  if (expl.etat === 'fini') {
-    return `<li class="explo"><p>${nouveaux ? `✅ Exploration terminée : <b>${nouveaux} nouveau${nouveaux > 1 ? 'x' : ''} trajet${nouveaux > 1 ? 's' : ''} 🆕</b>` : '✅ Exploration terminée : rien de mieux à trouver'}, ${expl.testes} trajets de plus testés${expl.stop ? ' (arrêtée avant la fin)' : ''}.</p></li>`;
-  }
-  return '';
+  return `<div id="avancement">${h}</div>`;
 }
+function majAvancement() { const el = $('avancement'); if (el) el.outerHTML = blocAvancement(); }
 
 async function explorer() {
   const moi = expl = { etat: 'encours', fait: 0, testes: 0, total: 0, stop: false };
@@ -301,7 +310,7 @@ async function explorer() {
       await sleep(DELAI_VALHALLA);
       let res = [];
       try { res = (await route(de, vers, prof)).map(analyse); } catch (err) { /* morceau impossible : ignoré */ }
-      cache.set(k, res); moi.fait++;
+      cache.set(k, res); moi.fait++; majAvancement();
     }
     return cache.get(k);
   };
@@ -339,12 +348,15 @@ async function run(e) {
     ends = { a, b }; hot = -1; routes = [];
     if (expl.etat === 'encours') expl.stop = true;   // une nouvelle recherche arrête l'exploration en cours
     expl = { etat: 'aucun' }; dejaFete = 0;
+    rech = { etat: 'encours', libelle: 'Calcul des itinéraires…', fait: 0, total: PROFILES.length + 8 + 6 };   // total affiné en route
     const found = []; let fails = 0;
     trouves = found;
+    const calcul = async (...args) => { try { return await route(...args); } finally { rech.fait++; majAvancement(); } };
     for (let p = 0; p < PROFILES.length; p++) {
-      st.textContent = `Calcul des itinéraires ${p + 1}/${PROFILES.length}…`;
+      rech.libelle = `Calcul des itinéraires ${p + 1}/${PROFILES.length}…`; majAvancement();
       try {
-        found.push(...(await route(a, b, PROFILES[p])).map(analyse));
+        found.push(...(await calcul(a, b, PROFILES[p])).map(analyse));
+        if (!st.classList.contains('err')) st.textContent = '';   // l'avancement passe dans la synthèse
         // Affichage au fil de l'eau : la liste se remplit dès la première réponse.
         routes = dedupe(found).sort((x, y) => x.min - y.min);
         $('res').hidden = false; $('lim').hidden = false; render();
@@ -360,12 +372,13 @@ async function run(e) {
 
     // Phase 2 : trajets mixtes, là où un trajet sans autoroute rejoint (ou quitte) un trajet par autoroute.
     const pts = candidats(dedupe(found));
+    rech.total = rech.fait + 2 * pts.length + 6;
     for (let k = 0; k < pts.length; k++) {
-      st.textContent = `Recherche de trajets mixtes ${k + 1}/${pts.length}…`;
+      rech.libelle = `Recherche de trajets mixtes ${k + 1}/${pts.length}…`; majAvancement();
       const c = pts[k], P = { lat: c.p[0], lon: c.p[1] }, [r1, r2] = reglagesMixte(c.sens, RAPIDE, LIBRE);
       try {
-        await sleep(DELAI_VALHALLA); const m1 = analyse((await route(a, P, r1))[0]);
-        await sleep(DELAI_VALHALLA); const m2 = analyse((await route(P, b, r2))[0]);
+        await sleep(DELAI_VALHALLA); const m1 = analyse((await calcul(a, P, r1))[0]);
+        await sleep(DELAI_VALHALLA); const m2 = analyse((await calcul(P, b, r2))[0]);
         found.push(joindre(m1, m2, c));
         routes = dedupe(found).sort((x, y) => x.min - y.min);
         render();
@@ -375,24 +388,26 @@ async function run(e) {
     // Phase 3 : couper le trajet à une grande ville traversée. Sur le premier morceau, plus court,
     // le serveur propose des variantes qu'il ignore sur le trajet complet ; on finit par le plus rapide.
     const etapes = villesEtapes(dedupe(found));
+    rech.total = rech.fait + 3 * etapes.length;
     for (let k = 0; k < etapes.length; k++) {
       const v = etapes[k], V = { lat: v.lat, lon: v.lon };
-      st.textContent = `Recherche par étapes (${v.nom}) ${k + 1}/${etapes.length}…`;
+      rech.libelle = `Recherche par étapes (${v.nom}) ${k + 1}/${etapes.length}…`; majAvancement();
       try {
         const debuts = [];
         for (const p of [PROFILES[0], PROFILES[4]]) {   // rapide avec variantes, puis péage modéré
-          await sleep(DELAI_VALHALLA); debuts.push(...(await route(a, V, p)).map(analyse));
+          await sleep(DELAI_VALHALLA); debuts.push(...(await calcul(a, V, p)).map(analyse));
         }
-        await sleep(DELAI_VALHALLA); const fin = analyse((await route(V, b, RAPIDE))[0]);
+        await sleep(DELAI_VALHALLA); const fin = analyse((await calcul(V, b, RAPIDE))[0]);
         for (const d of dedupe(debuts)) found.push(joindre(d, fin, { sens: 'etape', p: [v.lat, v.lon], texte: `Variante jusqu'à ${v.nom}, puis le plus rapide` }));
         routes = dedupe(found).sort((x, y) => x.min - y.min);
         render();
       } catch (err) { /* une étape ratée n'empêche pas les autres */ }
     }
     const sec = Math.round((performance.now() - t0) / 1000);
-    st.textContent = `${a.name} → ${b.name} : ${routes.length} itinéraires différents en ${sec} s${fails ? ` (${fails} calcul${fails > 1 ? 's' : ''} en échec)` : ''}.`;
+    rech = { etat: 'fini', sec, echecs: fails };
     expl = { etat: 'pret' }; render();
   } catch (err) {
+    rech = { etat: 'aucune' }; majAvancement();
     st.className = 'err';
     st.textContent = !navigator.onLine || (err && err.message === HORS_LIGNE)
       ? '📵 Pas de connexion : Radin routier a besoin d\'internet pour calculer les trajets.'

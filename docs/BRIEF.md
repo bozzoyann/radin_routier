@@ -112,11 +112,11 @@ La v1 consiste à remettre le prototype au propre et à le mettre en ligne. La v
 
 **v1 : une appli fiable, utilisable sur téléphone**
 
-- [ ] Tester le prototype contre les vrais serveurs sur les trajets de référence, et corriger ce qui casse.
-- [ ] Découper le code en quelques fichiers (`index.html`, `app.js`, `cost.js`, `routing.js`, `styles.css`), sans framework ni étape de compilation.
-- [ ] Écrire des tests unitaires sous Node, sans dépendance, pour le décodage des tracés, le classement des tronçons, les totaux et la suppression des doublons.
-- [ ] Ajouter le profil véhicule et l'assistant usure.
-- [ ] Ajouter les suggestions d'adresses pendant la saisie.
+- [x] Tester le prototype contre les vrais serveurs sur les trajets de référence, et corriger ce qui casse.
+- [x] Découper le code en quelques fichiers (`index.html`, `app.js`, `cost.js`, `routing.js`, `styles.css`), sans framework ni étape de compilation.
+- [x] Écrire des tests unitaires sous Node, sans dépendance, pour le décodage des tracés, le classement des tronçons, les totaux et la suppression des doublons.
+- [x] Ajouter le profil véhicule et l'assistant usure.
+- [x] Ajouter les suggestions d'adresses pendant la saisie.
 - [ ] Publier sur GitHub Pages.
 
 La v1 est terminée quand, sur téléphone, Toulouse → Lyon affiche au moins 3 trajets différents en moins de 15 secondes, et que chaque total se retrouve à la main à partir de son détail.
@@ -132,12 +132,12 @@ La v1 est terminée quand, sur téléphone, Toulouse → Lyon affiche au moins 3
 
 ## Limites et points à vérifier
 
-Le premier risque : le prototype n'a jamais parlé aux vrais serveurs. C'est la première tâche de la v1.
+Le prototype a été testé contre les vrais serveurs le 25 novembre 2026 : Toulouse → Lyon donne 7 trajets distincts en 10 s, Paris → Rouen 6 trajets en 9 s. Photon et Valhalla renvoient tous deux `Access-Control-Allow-Origin: *`. Reste à confirmer sur téléphone, depuis GitHub Pages.
 
 - **Accès depuis le navigateur** : il faut vérifier que Photon et Valhalla acceptent bien les requêtes venant d'une page publiée sur GitHub Pages (en-têtes CORS).
 - **Serveur public Valhalla (FOSSGIS)** : il est gratuit mais partagé. Il faut garder des requêtes espacées et afficher un message clair si le serveur sature. Si ça ne suffit pas, il reste une instance hébergée soi-même ou un service payant basé sur Valhalla.
 - **Durées sans trafic** : l'écart de temps entre autoroute et nationale peut changer aux heures de pointe.
-- **Péage au kilomètre** : l'estimation peut s'écarter du vrai tarif, surtout sur les tronçons courts et les autoroutes chères.
+- **Péage au kilomètre** : l'estimation peut s'écarter du vrai tarif, surtout sur les tronçons courts et les autoroutes chères. Exemple constaté : le viaduc de Millau (A75) coûte environ 11 € pour quelques kilomètres, alors que l'estimation n'en compte que 6 € sur 59 km.
 - **Seuil « ville » à 50 km/h de moyenne** : c'est une approximation, à ajuster après quelques trajets réels.
 - **Usure et décote** : ce sont des estimations, à remplacer par les vraies factures.
 - **Prix du carburant par défaut** : 2,05 €/L, la moyenne de l'E10 début novembre 2026. Il devient vite faux tant que la v2 ne le récupère pas automatiquement.

@@ -142,3 +142,24 @@ test('marche : minutes en plus, euros économisés, euros par minute', () => {
   assert.equal(marche(mixte, petites, 15).verdict, 'oui');
   assert.equal(marche({ min: 100, eur: 50 }, { min: 100.2, eur: 40 }, 15).parMin, Infinity); // même durée
 });
+
+import { escalier } from '../cost.js';
+
+test('escalier : les marches trop petites (moins de 12 %) sautent', () => {
+  const t = [
+    { min: 200, eur: 90 },  // 0 le plus rapide
+    { min: 235, eur: 68 },  // 1 −24 %       : gardé
+    { min: 260, eur: 64 },  // 2 −6 % de 68  : saute
+    { min: 290, eur: 61 },  // 3 −10 % de 68 : saute
+    { min: 315, eur: 53 },  // 4 −22 % de 68 : gardé
+    { min: 330, eur: 70 }   // 5 dominé
+  ];
+  assert.deepEqual(escalier(t), [0, 1, 4]);
+  assert.deepEqual(escalier(t, 0), [0, 1, 2, 3, 4]); // sans seuil : tous les non dominés
+  assert.deepEqual(escalier([{ min: 10, eur: 5 }]), [0]);
+});
+
+test('escalier : 12 % pile suffit', () => {
+  assert.deepEqual(escalier([{ min: 100, eur: 100 }, { min: 130, eur: 88 }]), [0, 1]);
+  assert.deepEqual(escalier([{ min: 100, eur: 100 }, { min: 130, eur: 88.5 }]), [0]);
+});

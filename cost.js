@@ -156,3 +156,23 @@ export function marche(haut, bas, seuil) {
   const verdict = parHeure >= seuil ? 'oui' : parHeure >= seuil / 2 ? 'bof' : 'non';
   return { dt, de, parMin, verdict };
 }
+
+/** Une marche doit faire économiser au moins cette part du prix du trajet d'où elle part. */
+export const MARCHE_MIN = 0.12;
+
+/**
+ * L'escalier : parmi les trajets `items` ([{min, eur}]), ceux qu'on montre, du plus rapide au moins cher.
+ * On part du plus rapide ; un trajet plus lent n'est retenu que s'il fait économiser au moins
+ * `seuil` (12 %) du prix du dernier trajet retenu. Les trajets dominés sont exclus d'office.
+ * Renvoie les indices retenus, dans l'ordre de l'escalier.
+ */
+export function escalier(items, seuil = MARCHE_MIN) {
+  const dom = domines(items);
+  const ordre = items.map((x, i) => i).filter(i => !dom.has(i)).sort((a, b) => items[a].min - items[b].min);
+  const out = [];
+  for (const i of ordre) {
+    const dernier = out.length ? items[out.at(-1)] : null;
+    if (!dernier || dernier.eur - items[i].eur >= seuil * dernier.eur) out.push(i);
+  }
+  return out;
+}

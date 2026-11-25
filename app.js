@@ -1,5 +1,5 @@
 // Interface : saisie, réglages, liste des trajets, carte schématique, exports.
-import { DEF, USURE_DEF, usureParKm, analyse, dedupe, cost, along, domines, marche } from './cost.js';
+import { DEF, USURE_DEF, usureParKm, analyse, dedupe, cost, along, domines, marche, escalier } from './cost.js';
 import { PROFILES, DELAI_VALHALLA, geocode, route, suggest } from './routing.js';
 import { candidats, reglagesMixte, joindre } from './mixtes.js';
 
@@ -8,7 +8,7 @@ const RAPIDE = { auto: { use_tolls: 1, use_highways: 1 } };
 const LIBRE = { auto: { use_tolls: 0, use_highways: 0 } };
 
 /** Version affichée en haut de la page : à augmenter à chaque modification publiée. */
-export const VERSION = '1.2.0';
+export const VERSION = '1.2.1';
 export const VERSION_DATE = '25/11/2026';
 
 const $ = id => document.getElementById(id);
@@ -81,22 +81,27 @@ function render() {
   if (!routes.length) return;
   const s = settings();
   const rows = routes.map((r, i) => ({ r, i, c: cost(r, s) }));
-  const dom = domines(rows.map(x => ({ min: x.r.min, eur: x.c.eur })));
-  rows.forEach((x, j) => { x.dom = dom.has(j); });
+  const items = rows.map(x => ({ min: x.r.min, eur: x.c.eur }));
+  const dom = domines(items), garde = new Set(escalier(items));
+  rows.forEach((x, j) => { x.domine = dom.has(j); x.dom = !garde.has(j); });   // x.dom : replié sous « autres trajets »
   domMap = new Set(rows.filter(x => x.dom).map(x => x.i));
-  // L'escalier : les trajets utiles, du plus rapide au moins cher (plus lent = forcément moins cher).
+  // L'escalier : du plus rapide au moins cher, chaque marche faisant gagner au moins 12 % (voir cost.js escalier).
   const utiles = rows.filter(x => !x.dom).sort((a, b) => a.r.min - b.r.min);
   const autres = rows.filter(x => x.dom).sort((a, b) => a.r.min - b.r.min);
   const best = utiles.reduce((a, b) => b.c.mix < a.c.mix ? b : a);
   const ordre = [...utiles, ...autres];
   const num = new Map(ordre.map((x, k) => [x.i, k + 1]));
 
-  const carte = ({ r, i, c, dom: estDomine }) => {
+  const carte = ({ r, i, c, dom: estDomine, domine }) => {
     const star = best.i === i ? '<span class="bdg star">⭐ Meilleur choix pour toi</span>' : '';
     let note = '';
-    if (estDomine) {
-      const meilleur = utiles.find(u => u.r.min <= r.min && u.c.eur <= c.eur);
+    if (domine) {
+      const meilleur = utiles.find(u => u.r.min <= r.min && u.c.eur <= c.eur) || rows.find(u => !u.domine && u.r.min <= r.min && u.c.eur <= c.eur);
       note = `<p class="note">Plus lent et plus cher que le trajet ${num.get(meilleur.i)}.</p>`;
+    } else if (estDomine) {
+      // Marche trop petite : on la compare au trajet de l'escalier juste plus rapide.
+      const ref = [...utiles].reverse().find(u => u.r.min <= r.min);
+      note = `<p class="note">Seulement ${fmtE(ref.c.eur - c.eur)} de moins que le trajet ${num.get(ref.i)}, pour ${fmtT(r.min - ref.r.min)} de plus.</p>`;
     }
     const refs = r.refs.slice(0, 4).map(x => `<span class="c${x[0] === 'D' ? ' cD' : ''}">${esc(x)}</span>`).join('');
     const peage = c.toll >= 0.5 ? `péage ${fmtE(c.toll)} <small>(~${Math.round(r.tollKm)} km)</small>` : 'sans péage';
@@ -126,7 +131,7 @@ ${r.mixte ? `<p class="mx">🔀 ${esc(r.mixte.texte)}</p>` : ''}<p><span class="
   utiles.forEach((x, k) => { if (k) html += pas(utiles[k - 1], x); html += carte(x); });
   const nDom = autres.length;
   if (nDom) {
-    html += `<li class="more"><button type="button" id="vdom" aria-expanded="${voirDomines}">${voirDomines ? 'Masquer' : 'Voir'} ${nDom} trajet${nDom > 1 ? 's' : ''} sans intérêt <small>(plus lent${nDom > 1 ? 's' : ''} et plus cher${nDom > 1 ? 's' : ''} qu'un autre)</small></button></li>`;
+    html += `<li class="more"><button type="button" id="vdom" aria-expanded="${voirDomines}">${voirDomines ? 'Masquer' : 'Voir'} ${nDom > 1 ? `les ${nDom} autres trajets` : 'l\'autre trajet'} <small>(moins intéressant${nDom > 1 ? 's' : ''})</small></button></li>`;
     html += autres.map(carte).join('');
   }
   $('list').innerHTML = html;

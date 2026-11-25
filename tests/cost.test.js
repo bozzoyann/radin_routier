@@ -184,22 +184,28 @@ test('escalier : une suite de petites marches ne fait pas tout disparaître', ()
 
 import { choixLimite, LIMITE_DEF } from '../cost.js';
 
-test('choixLimite : le moins cher dans la limite, suggestion jusqu\'à 2 fois, ou 3 fois si vrai gain (20 %)', () => {
-  // Un escalier : plus rapide, +8 min (91 €), +1 h 12 (75 €), +1 h 29 (64 €)
-  const t = [{ min: 230, eur: 115 }, { min: 238, eur: 91 }, { min: 302, eur: 75 }, { min: 319, eur: 64 }];
+test('choixLimite : le moins cher dans la limite, chaque pas rapportant au moins 3 € et 1 € toutes les 3 min', () => {
   assert.equal(LIMITE_DEF, 30);
-  // Limite 30 : choix +8 min. Jusqu'à 60 min : rien. Jusqu'à 90 min : +1 h 29 à 64 €, −30 % de 91 € : vrai gain.
-  assert.deepEqual(choixLimite(t, 30), { choix: 1, suggestion: 3 });
-  // Limite 25 : jusqu'à 50 min : rien. Jusqu'à 75 min : +1 h 12 à 75 €, seulement −18 % : pas assez.
-  assert.deepEqual(choixLimite(t, 25), { choix: 1, suggestion: -1 });
-  // Limite 36 : jusqu'à 72 min, +1 h 12 est suggéré sans condition…
-  assert.deepEqual(choixLimite(t, 36), { choix: 1, suggestion: 3 }); // … mais +1 h 29 (≤ 108 min, −30 %) fait mieux
-  // Limite 45 : +1 h 12 et +1 h 29 sous 90 min : le moins cher l'emporte.
-  assert.deepEqual(choixLimite(t, 45), { choix: 1, suggestion: 3 });
-  assert.deepEqual(choixLimite(t, 0), { choix: 0, suggestion: -1 });              // pressé : le plus rapide
-  assert.deepEqual(choixLimite(t, 5), { choix: 0, suggestion: 1 });               // +8 min, moins de 2 × 5
-  assert.deepEqual(choixLimite(t, Infinity), { choix: 3, suggestion: -1 });       // radin pur : le moins cher
-  assert.deepEqual(choixLimite([], 30), { choix: -1, suggestion: -1 });
+  // Une variante à +19 min pour −7 € (1 € toutes les 2,7 min), puis +1 h 30 pour −17 € en tout.
+  const t = [{ min: 264, eur: 121 }, { min: 283, eur: 114 }, { min: 354, eur: 104 }];
+  assert.deepEqual(choixLimite(t, 60), { choix: 1, suggestion: -1 });   // la suite : 10 € pour 71 min, non
+  assert.deepEqual(choixLimite(t, 15), { choix: 0, suggestion: 1 });    // +19 min : au-delà, mais suggéré
+  assert.deepEqual(choixLimite(t, Infinity), { choix: 1, suggestion: -1 });
+  assert.deepEqual(choixLimite(t, 0), { choix: 0, suggestion: -1 });    // pressé : le plus rapide
+  // 7 € pour 1 h : non. 14,50 € pour 2 h : non plus. 2 €, même en 2 min : trop peu.
+  assert.deepEqual(choixLimite([{ min: 100, eur: 100 }, { min: 160, eur: 93 }], 60).choix, 0);
+  assert.deepEqual(choixLimite([{ min: 0, eur: 121 }, { min: 120, eur: 106.5 }], 120).choix, 0);
+  assert.deepEqual(choixLimite([{ min: 0, eur: 100 }, { min: 2, eur: 98 }], 30).choix, 0);
+});
+
+test('choixLimite : on avance pas à pas, et la suggestion va jusqu\'à 3 fois la limite si vrai gain (20 %)', () => {
+  // +8 min pour −24 €, puis +1 h 21 pour −27 € de plus (pile 1 € toutes les 3 min).
+  const t = [{ min: 230, eur: 115 }, { min: 238, eur: 91 }, { min: 319, eur: 64 }];
+  assert.deepEqual(choixLimite(t, 90), { choix: 2, suggestion: -1 });
+  // Limite 30 : rien jusqu'à 60 min ; jusqu'à 90 min, 64 € fait −30 % sur 91 € : suggéré.
+  assert.deepEqual(choixLimite(t, 30), { choix: 1, suggestion: 2 });
+  // Un pas qui rapporte gros (3 € en 1 min), puis 9 € pour 29 min de plus : pas assez, on s'arrête.
+  assert.deepEqual(choixLimite([{ min: 0, eur: 100 }, { min: 1, eur: 97 }, { min: 30, eur: 88 }], 60).choix, 1);
 });
 
 test('choixLimite : entre 2 et 3 fois la limite, un petit gain ne suffit pas', () => {
@@ -255,16 +261,4 @@ test('auDessusLigne : variante moins bonne que ses deux voisins', () => {
   assert.equal(auDessusLigne(p, n, { min: 329, eur: 112 }), true);    // 1 h de plus pour 9 € : sans intérêt
   assert.equal(auDessusLigne(p, n, { min: 278, eur: 113 }), false);   // sous la ligne : vraie variante
   assert.equal(auDessusLigne(p, null, { min: 300, eur: 100 }), false); // pas de voisin suivant
-});
-
-import { promu } from '../cost.js';
-
-test('promu : la variante moins chère dans la limite monte dans l\'escalier', () => {
-  const esc = [{ min: 264, eur: 121 }, { min: 354, eur: 104 }];   // +1 h 30 pour −17 €
-  const autres = [{ min: 283, eur: 114 }];                         // +19 min pour −7 € : une variante
-  assert.equal(promu(esc, autres, 60), 0);          // 1 h acceptée : elle devient ton choix
-  assert.equal(promu(esc, autres, 15), -1);         // 15 min : hors limite, elle reste variante
-  assert.equal(promu(esc, autres, Infinity), -1);   // peu importe : le moins cher de l'escalier gagne déjà
-  assert.equal(promu(esc, [{ min: 270, eur: 118 }, { min: 290, eur: 112 }], 60), 1);   // la moins chère des deux
-  assert.equal(promu([], autres, 60), -1);
 });

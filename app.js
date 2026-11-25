@@ -1,5 +1,5 @@
 // Interface : saisie, réglages, liste des trajets, carte schématique, exports.
-import { DEF, USURE_DEF, usureParKm, analyse, dedupe, cost, along, domines, marche, escalier, choixLimite, LIMITE_DEF, auDessusLigne, promu } from './cost.js';
+import { DEF, USURE_DEF, usureParKm, analyse, dedupe, cost, along, domines, marche, escalier, choixLimite, LIMITE_DEF, auDessusLigne } from './cost.js';
 import { PROFILES, DELAI_VALHALLA, geocode, route, suggest } from './routing.js';
 import { candidats, reglagesMixte, joindre } from './mixtes.js';
 import { villesTraversees, villesEtapes } from './villes.js';
@@ -13,7 +13,7 @@ const RAPIDE = { auto: { use_tolls: 1, use_highways: 1 } };
 const LIBRE = { auto: { use_tolls: 0, use_highways: 0 } };
 
 /** Version affichée en haut de la page : à augmenter à chaque modification publiée. */
-export const VERSION = '1.17.1';
+export const VERSION = '1.18.0';
 export const VERSION_DATE = '25/11/2026';
 
 const $ = id => document.getElementById(id);
@@ -81,6 +81,14 @@ function gpx(r, i) {
 }
 
 const fmtEur = v => `${v.toFixed(2).replace('.', ',')} €`;
+// Ce que rapporte une marche, en minutes perdues par euro gagné : « 1 € toutes les 2,7 min ».
+const tauxTxt = (dt, de) => {
+  if (dt <= 0.5 || de <= 0) return '';
+  const mpe = dt / de;
+  if (mpe <= 1) return 'plus d\'1 € la minute';
+  if (mpe > 30) return 'presque rien';
+  return `1 € toutes les ${mpe < 10 ? mpe.toFixed(1).replace('.', ',') : Math.round(mpe)} min`;
+};
 
 function render() {
   save();
@@ -111,16 +119,18 @@ function render() {
   const auDessus = x => { const p = avant(x); return auDessusLigne(pt(p), pt(utiles[utiles.indexOf(p) + 1]), pt(x)); };
   const plusChers = tousAutres.filter(x => x.c.eur >= prixRapide || x.domine || derisoire(x) || doublon(x) || auDessus(x)), autres = tousAutres.filter(x => !plusChers.includes(x));
   masques = new Set(plusChers.map(x => x.i));
-  // Une variante moins chère que le choix et dans ta limite monte dans l'escalier : il suit la pilule choisie.
-  const kp = promu(utiles.map(pt), autres.map(pt), limite);
-  if (kp >= 0) {
-    const [v] = autres.splice(kp, 1);
+  // Ton choix : le moins cher dans ta limite de temps, chaque pas rapportant au moins 3 € et 1 € toutes les 3 min ;
+  // « au-delà » : un peu plus loin, même règle (voir cost.js choixLimite). Variantes comprises.
+  const cands = [...utiles, ...autres].sort((a, b) => a.r.min - b.r.min);
+  const cl = choixLimite(cands.map(pt), limite);
+  const best = cands[cl.choix], sugg = cl.suggestion >= 0 ? cands[cl.suggestion] : null, t0 = utiles[0].r.min;
+  // Une variante retenue comme choix (ou au-delà) monte dans l'escalier : il suit la pilule choisie.
+  for (const v of [best, sugg]) {
+    if (!v || !autres.includes(v)) continue;
+    autres.splice(autres.indexOf(v), 1);
     v.dom = false; domMap.delete(v.i);
     utiles.push(v); utiles.sort((a, b) => a.r.min - b.r.min);
   }
-  // Ton choix : le moins cher dans ta limite de temps ; à considérer : un peu au-delà (voir cost.js choixLimite).
-  const cl = choixLimite(utiles.map(x => ({ min: x.r.min, eur: x.c.eur })), limite);
-  const best = utiles[cl.choix], sugg = cl.suggestion >= 0 ? utiles[cl.suggestion] : null, t0 = utiles[0].r.min;
   for (const b of document.querySelectorAll('#lim button')) b.setAttribute('aria-pressed', String(b.dataset.l === (isFinite(limite) ? String(limite) : 'inf')));
   const ordre = [...utiles, ...autres, ...plusChers];
   const num = new Map(ordre.map((x, k) => [x.i, k + 1]));
@@ -169,13 +179,12 @@ ${r.mixte ? `<p>${esc(r.mixte.texte)}</p>` : ''}<p><span class="nw">carburant ${
 </li>`;
   };
 
-  // Une marche entre deux trajets de l'escalier : vert dans ta limite, orange un peu au-delà, gris au-delà.
+  // Une marche entre deux trajets de l'escalier : vert jusqu'à ton choix, orange jusqu'à « au-delà », gris ensuite.
   const pas = (haut, bas) => {
     const m = marche({ min: haut.r.min, eur: haut.c.eur }, { min: bas.r.min, eur: bas.c.eur }, 0);
-    const plus = bas.r.min - t0;
-    const cls = plus <= limite ? 'y' : sugg && bas.r.min <= sugg.r.min ? 'm' : 'n';
+    const cls = bas.r.min <= best.r.min ? 'y' : sugg && bas.r.min <= sugg.r.min ? 'm' : 'n';
     const temps = m.dt > 0.5 ? `+${fmtT(m.dt)}` : 'même durée';
-    const taux = isFinite(m.parMin) ? `${fmtEur(m.parMin)}/min` : '';
+    const taux = tauxTxt(m.dt, m.de);
     return `<li class="marche ${cls}" aria-label="Du trajet ${num.get(haut.i)} au trajet ${num.get(bas.i)}"><span class="fil-seul"><span></span></span><span class="ecart">${temps} · −${fmtE(m.de)}<span>${taux}</span></span></li>`;
   };
 
@@ -206,7 +215,7 @@ ${r.mixte ? `<p>${esc(r.mixte.texte)}</p>` : ''}<p><span class="nw">carburant ${
   synth += `<div class="ligne"><span class="tag">${best === rapide ? 'Ton choix · le plus rapide' : 'Ton choix'}</span><button type="button" class="sel droite cond" data-sel="${best.i}">Trajet ${num.get(best.i)}</button></div>
 <div class="ligne"><span class="prix">${fmtE(best.c.eur)}</span><span class="duree">${fmtT(best.r.min)}</span></div>`;
   synth += best === rapide
-    ? `<div class="ecart">${isFinite(limite) && limite ? `Rien à gagner en ${fmtT(limite)} de plus` : 'Aucun détour ne fait gagner d\'argent'}</div>`
+    ? `<div class="ecart">${limite === 0 ? 'Aucune minute de plus acceptée' : `Aucun détour rentable${isFinite(limite) ? ` en ${fmtT(limite)} de plus` : ''}`}</div>`
     : `<div class="ecart">−${fmtE(rapide.c.eur - best.c.eur)} pour +${fmtT(best.r.min - t0)} <span>vs le plus rapide</span></div>`;
   synth += `<div class="actions"><a class="maps" href="${gmaps(best.r)}" target="_blank" rel="noopener">Ouvrir dans Maps</a></div>`;
   if (sugg) synth += `<div class="sep"></div><div class="ligne"><span class="tag">Au-delà</span><button type="button" class="sel droite cond" data-sel="${sugg.i}">Trajet ${num.get(sugg.i)} · −${fmtE(best.c.eur - sugg.c.eur)} pour +${fmtT(sugg.r.min - best.r.min)}</button></div>`;

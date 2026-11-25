@@ -218,38 +218,52 @@ export const LIMITE_DEF = 30;
 /** Au-delà de 2 fois la limite (et jusqu'à 3 fois), une suggestion doit faire économiser au moins 20 % de plus. */
 export const VRAI_GAIN = 0.20;
 
+/** Garde-fou du choix (radin, mais pas trop) : chaque pas doit faire gagner au moins 3 €… */
+export const PAS_EUR = 3;
+/** …et au moins 1 € toutes les 3 minutes perdues (soit 20 € de l'heure). */
+export const MIN_PAR_EURO = 3;
+
+/** Vrai si passer du trajet `a` au trajet `b`, plus lent, rapporte assez (voir PAS_EUR et MIN_PAR_EURO). */
+export function rentable(a, b) {
+  const de = a.eur - b.eur, dt = b.min - a.min;
+  return de >= PAS_EUR && de * MIN_PAR_EURO >= dt;
+}
+
+// Depuis le trajet `depart`, on avance tant qu'un trajet plus lent (jusqu'à `maxMin`) est rentable ;
+// à chaque pas, on prend celui qui rapporte le plus par minute, puis on repart de lui.
+function avancer(items, depart, maxMin) {
+  let cur = depart;
+  for (;;) {
+    let next = -1, mieux = -Infinity;
+    items.forEach((x, i) => {
+      const c = items[cur];
+      if (x.min <= c.min || x.min > maxMin || !rentable(c, x)) return;
+      const taux = (c.eur - x.eur) / Math.max(x.min - c.min, 0.5);
+      if (taux > mieux) { mieux = taux; next = i; }
+    });
+    if (next < 0) return cur;
+    cur = next;
+  }
+}
+
 /**
  * Le choix dans la limite de temps de l'utilisateur, et une suggestion au-delà.
- * `items` : l'escalier ([{min, eur}]), du plus rapide au moins cher ; `limite` : minutes en plus acceptées
- * (Infinity : peu importe). Le choix est le trajet le moins cher qui ne dépasse pas la limite.
- * La suggestion est le moins cher jusqu'à 2 fois la limite ; jusqu'à 3 fois seulement s'il fait économiser
- * au moins 20 % (VRAI_GAIN) du prix du choix. -1 s'il n'y en a pas.
+ * `items` : les trajets gardés ([{min, eur}]), triés du plus rapide au plus lent ; `limite` : minutes en plus
+ * acceptées (Infinity : peu importe). Le choix est le trajet le moins cher qu'on atteint dans la limite en
+ * partant du plus rapide, chaque pas rapportant au moins 3 € et 1 € toutes les 3 min (voir rentable).
+ * La suggestion continue de la même façon jusqu'à 2 fois la limite ; jusqu'à 3 fois seulement si elle fait
+ * économiser au moins 20 % (VRAI_GAIN) du prix du choix. -1 s'il n'y en a pas.
  */
 export function choixLimite(items, limite) {
   if (!items.length) return { choix: -1, suggestion: -1 };
   const t0 = items[0].min;
-  let choix = 0, suggestion = -1;
-  items.forEach((x, i) => { if (x.min - t0 <= limite) choix = i; });
-  items.forEach((x, i) => {
-    const plus = x.min - t0;
-    if (i <= choix || plus > 3 * limite) return;
-    if (plus <= 2 * limite || items[choix].eur - x.eur >= VRAI_GAIN * items[choix].eur) suggestion = i;
-  });
-  return { choix, suggestion };
-}
-
-/**
- * La variante à faire monter dans l'escalier pour ta limite de temps : la moins chère des variantes
- * qui tiennent dans la limite, si elle est moins chère que le choix pris dans l'escalier. -1 sinon.
- * `esc` : l'escalier ([{min, eur}]), du plus rapide au moins cher ; `autres` : les variantes gardées.
- * Ainsi « j'accepte 1 h de plus » prend tout ce qui fait gagner de l'argent dans l'heure, même peu.
- */
-export function promu(esc, autres, limite) {
-  if (!esc.length) return -1;
-  const t0 = esc[0].min, ref = esc[choixLimite(esc, limite).choix];
-  let k = -1;
-  autres.forEach((x, i) => { if (x.min - t0 <= limite && x.eur < (k >= 0 ? autres[k].eur : ref.eur)) k = i; });
-  return k;
+  const choix = avancer(items, 0, t0 + limite);
+  let suggestion = avancer(items, choix, t0 + 2 * limite);
+  if (suggestion === choix) {
+    const loin = avancer(items, choix, t0 + 3 * limite);
+    suggestion = items[choix].eur - items[loin].eur >= VRAI_GAIN * items[choix].eur ? loin : choix;
+  }
+  return { choix, suggestion: suggestion === choix ? -1 : suggestion };
 }
 
 /**

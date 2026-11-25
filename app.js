@@ -13,7 +13,7 @@ const RAPIDE = { auto: { use_tolls: 1, use_highways: 1 } };
 const LIBRE = { auto: { use_tolls: 0, use_highways: 0 } };
 
 /** Version affichée en haut de la page : à augmenter à chaque modification publiée. */
-export const VERSION = '1.14.0';
+export const VERSION = '1.14.1';
 export const VERSION_DATE = '25/11/2026';
 
 const $ = id => document.getElementById(id);
@@ -94,6 +94,7 @@ function render() {
   // L'escalier : du plus rapide au moins cher, chaque marche faisant gagner au moins 12 % (voir cost.js escalier).
   const utiles = rows.filter(x => !x.dom).sort((a, b) => a.r.min - b.r.min);
   const tousAutres = rows.filter(x => x.dom).sort((a, b) => a.r.min - b.r.min);
+  const avant = x => [...utiles].reverse().find(u => u.r.min <= x.r.min) || utiles[0];   // trajet de l'escalier juste avant
   // Plus cher que le plus rapide : on y perd du temps ET de l'argent. Masqués (liste et carte), seulement comptés.
   const prixRapide = utiles[0].c.eur;
   // Sans intérêt (plus cher que le plus rapide, ou plus lent ET plus cher qu'un autre) : masqués, en pointillés sur la carte.
@@ -119,12 +120,15 @@ function render() {
       const meilleur = utiles.find(u => u.r.min <= r.min && u.c.eur <= c.eur) || rows.find(u => !u.domine && u.r.min <= r.min && u.c.eur <= c.eur);
       note = `<p class="note">Plus lent et plus cher que le trajet ${num.get(meilleur.i)}.</p>`;
     } else if (estDomine) {
-      // Écarté : comparé au trajet de l'escalier le plus proche en durée (avant ou après lui).
-      const ref = utiles.reduce((p, q) => (Math.abs(q.r.min - r.min) < Math.abs(p.r.min - r.min) ? q : p));
-      const de = ref.c.eur - c.eur, dt = r.min - ref.r.min;
-      note = dt >= 0
-        ? `<p class="note">${de < 0.5 ? 'À peine moins cher' : `Seulement ${fmtE(de)} de moins`} que le trajet ${num.get(ref.i)}, pour ${fmtT(dt)} de plus.</p>`
-        : `<p class="note">${fmtT(-dt)} plus rapide que le trajet ${num.get(ref.i)}, mais ${fmtE(-de)} plus cher.</p>`;
+      // Variante intermédiaire, affichée sous le trajet de l'escalier qui la précède ; comparée au plus proche
+      // en durée des deux trajets qui l'encadrent.
+      const prec = avant({ r }), suiv = utiles[utiles.indexOf(prec) + 1];
+      if (suiv && suiv.r.min - r.min < r.min - prec.r.min) {
+        note = `<p class="note">${fmtT(suiv.r.min - r.min)} plus rapide que le trajet ${num.get(suiv.i)}, mais ${fmtE(c.eur - suiv.c.eur)} plus cher.</p>`;
+      } else {
+        const de = prec.c.eur - c.eur;
+        note = `<p class="note">${fmtT(r.min - prec.r.min)} de plus que le trajet ${num.get(prec.i)}, pour ${de < 0.5 ? 'à peine moins cher' : `seulement ${fmtE(de)} de moins`}.</p>`;
+      }
     }
     if (!r.villes) r.villes = villesTraversees(r.pts);   // calculé une fois par trajet
     const via = r.villes.length ? `<span class="via">par ${r.villes.map(esc).join(' · ')}</span>` : '';
@@ -162,12 +166,19 @@ ${r.mixte ? `<p class="mx">🔀 ${esc(r.mixte.texte)}</p>` : ''}<p><span class="
   };
 
   let html = '';
-  utiles.forEach((x, k) => { if (k) html += pas(utiles[k - 1], x); html += carte(x); });
+  // L'escalier, avec les variantes intermédiaires en retrait sous le trajet qu'elles suivent (si dépliées).
   const nDom = autres.length;
-  if (nDom) {
-    html += `<li class="more"><button type="button" id="vdom" aria-expanded="${voirDomines}">${voirDomines ? 'Masquer' : 'Voir'} ${nDom > 1 ? `les ${nDom} trajets écartés de peu` : 'le trajet écarté de peu'} <small>(un peu moins cher${nDom > 1 ? 's' : ''}, mais pas assez pour le temps en plus)</small></button></li>`;
-    html += autres.map(carte).join('');
-  }
+  if (nDom) html += `<li class="more"><button type="button" id="vdom" aria-expanded="${voirDomines}">${voirDomines ? 'Masquer' : 'Voir'} ${nDom > 1 ? `les ${nDom} variantes intermédiaires` : 'la variante intermédiaire'} <small>(quelques euros de moins seulement, affichée${nDom > 1 ? 's' : ''} en retrait à ${nDom > 1 ? 'leur' : 'sa'} place)</small></button></li>`;
+  // Une variante proche du trajet suivant s'affiche juste au-dessus de lui ; sinon, juste sous le précédent.
+  const versSuivant = v => { const p = avant(v), n = utiles[utiles.indexOf(p) + 1]; return !!n && n.r.min - v.r.min < v.r.min - p.r.min; };
+  utiles.forEach((x, k) => {
+    if (k) {
+      html += pas(utiles[k - 1], x);
+      html += autres.filter(v => avant(v) === utiles[k - 1] && versSuivant(v)).map(carte).join('');
+    }
+    html += carte(x);
+    html += autres.filter(v => avant(v) === x && !versSuivant(v)).map(carte).join('');
+  });
   // Bandeau : temps perdu, puis argent gagné, puis le trajet concerné (touchable pour le sélectionner).
   const rapide = utiles[0], lim = isFinite(limite) ? (limite ? fmtT(limite) : '') : '';
   const lien = x => `<button type="button" class="vers" data-sel="${x.i}">→ Trajet ${num.get(x.i)} : ${fmtT(x.r.min)} · ${fmtE(x.c.eur)}${x.r.villes && x.r.villes.length ? `, par ${x.r.villes.map(esc).join(' · ')}` : ''}</button>`;
@@ -183,7 +194,7 @@ ${r.mixte ? `<p class="mx">🔀 ${esc(r.mixte.texte)}</p>` : ''}<p><span class="
     bandeau = `<p class="trouve">🆕 <b>L'exploration a déniché ${neufs.length > 1 ? `${neufs.length} trajets` : 'un trajet'} que personne ne voyait !</b>${role}</p>${lien(top)}` + bandeau;
     if (neufs.length > dejaFete) { dejaFete = neufs.length; pluieDeBillets(); }
   }
-  $('list').innerHTML = `<li class="choix${neufs.length ? ' bravo' : ''}">${bandeau}<p class="nb">${routes.length} trajets comparés : ${utiles.length} dans l'escalier, ${autres.length} écarté${autres.length > 1 ? 's' : ''}${plusChers.length ? `, ${plusChers.length} sans intérêt (en pointillés sur la carte)` : ''}.</p></li>` + blocExploration(neufs.length) + html;
+  $('list').innerHTML = `<li class="choix${neufs.length ? ' bravo' : ''}">${bandeau}<p class="nb">${routes.length} trajets comparés : ${utiles.length} dans l'escalier, ${autres.length} variante${autres.length > 1 ? 's' : ''} intermédiaire${autres.length > 1 ? 's' : ''}${plusChers.length ? `, ${plusChers.length} sans intérêt (en pointillés sur la carte)` : ''}.</p></li>` + blocExploration(neufs.length) + html;
   draw();
 }
 

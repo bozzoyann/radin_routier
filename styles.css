@@ -203,3 +203,6 @@ footer a{color:inherit}
 /* Mode sombre : fond de carte inversé pour ne pas éblouir (les tracés gardent leurs couleurs) */
 @media (prefers-color-scheme: dark){:root:not([data-theme=light]) .leaflet-tile-pane{filter:invert(1) hue-rotate(180deg) brightness(.9) contrast(.9)}}
 :root[data-theme=dark] .leaflet-tile-pane{filter:invert(1) hue-rotate(180deg) brightness(.9) contrast(.9)}
+/* Variantes intermédiaires : en retrait sous le trajet de l'escalier qu'elles suivent */
+.row.dom{margin-left:28px !important;border-style:dashed;opacity:.9}
+.row.dom .note{color:var(--mut)}

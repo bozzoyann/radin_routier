@@ -39,4 +39,5 @@ Sans dépendance. Couvre le décodage des tracés, le classement des tronçons, 
 
 - Itinéraires : [Valhalla](https://valhalla.github.io/valhalla/), via le serveur public FOSSGIS.
 - Adresses : [Photon](https://photon.komoot.io).
+- Carte : [Leaflet](https://leafletjs.com) (licence BSD-2, copié dans `vendor/leaflet/`) et tuiles OpenStreetMap.
 - Données : © contributeurs [OpenStreetMap](https://www.openstreetmap.org/copyright).

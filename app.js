@@ -13,7 +13,7 @@ const RAPIDE = { auto: { use_tolls: 1, use_highways: 1 } };
 const LIBRE = { auto: { use_tolls: 0, use_highways: 0 } };
 
 /** Version affichée en haut de la page : à augmenter à chaque modification publiée. */
-export const VERSION = '1.13.2';
+export const VERSION = '1.14.0';
 export const VERSION_DATE = '25/11/2026';
 
 const $ = id => document.getElementById(id);
@@ -187,37 +187,56 @@ ${r.mixte ? `<p class="mx">🔀 ${esc(r.mixte.texte)}</p>` : ''}<p><span class="
   draw();
 }
 
-const svg = $('map');
+// ---------- Carte : fond OpenStreetMap (Leaflet, copié dans vendor/leaflet) ----------
 let domMap = new Set();
-let masques = new Set();   // trajets plus chers que le plus rapide : ni dans la liste, ni sur la carte
-function draw() {
-  if (!routes.length) return;
-  const W = svg.clientWidth || 600, H = svg.clientHeight || 300, pad = 28;
-  const all = routes.flatMap(r => r.pts);
-  const lat0 = all.reduce((a, p) => a + p[0], 0) / all.length, k = Math.cos(lat0 * Math.PI / 180);
-  let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
-  for (const p of all) { const x = p[1] * k; x0 = Math.min(x0, x); x1 = Math.max(x1, x); y0 = Math.min(y0, p[0]); y1 = Math.max(y1, p[0]); }
-  const sc = Math.min((W - 2 * pad) / ((x1 - x0) || 1), (H - 2 * pad) / ((y1 - y0) || 1));
-  const ox = (W - (x1 - x0) * sc) / 2, oy = (H - (y1 - y0) * sc) / 2;
-  const P = p => [ox + (p[1] * k - x0) * sc, H - oy - (p[0] - y0) * sc];
-  const order = routes.map((_, i) => i).filter(i => !masques.has(i)).sort((a, b) => (a === hot) - (b === hot));
-  const chemin = r => { const step = Math.max(1, Math.floor(r.pts.length / 1500)); return r.pts.filter((_, j) => j % step === 0 || j === r.pts.length - 1).map((p, j) => (j ? 'L' : 'M') + P(p).map(v => v.toFixed(1)).join(' ')).join(''); };
-  // Trajets plus chers que le plus rapide : fins pointillés gris, dessous, pour montrer tout ce qui a été exploré.
-  const explores = [...masques].map(i => `<path d="${chemin(routes[i])}" fill="none" stroke="currentColor" stroke-width="1.5" stroke-dasharray="3 4" stroke-linecap="round" opacity="0.35" pointer-events="none"/>`).join('');
-  const lines = explores + order.map(i => {
-    const r = routes[i], d = chemin(r);
-    const on = hot === i || (hot === -1 && !(domMap.has(i) && !voirDomines));
-    // Un trait large et invisible par-dessus, pour toucher facilement le tracé au doigt.
-    return `<path d="${d}" fill="none" stroke="${COLORS[i % COLORS.length]}" stroke-width="${hot === i ? 6 : 3}" stroke-linejoin="round" stroke-linecap="round" opacity="${on ? 1 : 0.2}"/>`
-      + (domMap.has(i) && !voirDomines ? '' : `<path d="${d}" fill="none" stroke="transparent" stroke-width="18" data-i="${i}" style="cursor:pointer;pointer-events:stroke"/>`);
-  }).join('');
-  const A = P(routes[0].pts[0]), B = P(routes[0].pts[routes[0].pts.length - 1]);
-  const ink = getComputedStyle(document.body).color;
-  const lab = (p, t) => { const left = p[0] > W / 2; return `<circle cx="${p[0]}" cy="${p[1]}" r="7" fill="${ink}"/><text x="${p[0] + (left ? -12 : 12)}" y="${p[1] - 10}" text-anchor="${left ? 'end' : 'start'}" font-family="Barlow Semi Condensed,sans-serif" font-weight="600" font-size="15" fill="${ink}">${esc(t)}</text>`; };
-  svg.style.color = getComputedStyle(document.body).color;
-  svg.innerHTML = lines + lab(A, ends.a.name) + lab(B, ends.b.name);
+let masques = new Set();   // trajets sans intérêt : hors de la liste, en pointillés sur la carte
+let carte = null, calque = null, cadrage = '';
+const TUILES = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';   // conditions : attribution visible, usage modéré
+
+function creerCarte() {
+  carte = L.map('carte', { scrollWheelZoom: false, zoomSnap: 0.25 });
+  L.tileLayer(TUILES, { maxZoom: 18, attribution: '© <a href="https://www.openstreetmap.org/copyright">contributeurs OpenStreetMap</a>' }).addTo(carte);
+  calque = L.layerGroup().addTo(carte);
+  carte.on('click', () => { if (hot !== -1) { hot = -1; render(); } });   // toucher le fond désélectionne
+  new ResizeObserver(() => carte.invalidateSize()).observe($('carte'));
 }
-new ResizeObserver(draw).observe(svg);
+
+// Tracé allégé (800 points au plus) : bien assez pour l'écran, et plus fluide sur téléphone.
+const allege = pts => { const step = Math.max(1, Math.ceil(pts.length / 800)); return pts.filter((_, j) => j % step === 0 || j === pts.length - 1); };
+
+function draw() {
+  if (!routes.length || typeof L === 'undefined') return;
+  if (!carte) creerCarte();
+  calque.clearLayers();
+  // Trajets sans intérêt : fins pointillés gris, dessous, pour montrer tout ce qui a été exploré.
+  for (const i of masques) L.polyline(allege(routes[i].pts), { color: '#7a808c', weight: 2, dashArray: '4 6', opacity: 0.7, interactive: false }).addTo(calque);
+  const order = routes.map((_, i) => i).filter(i => !masques.has(i)).sort((a, b) => (a === hot) - (b === hot));
+  for (const i of order) {
+    const pts = allege(routes[i].pts), on = hot === i || (hot === -1 && !(domMap.has(i) && !voirDomines));
+    if (hot === i) L.polyline(pts, { color: '#ffffff', weight: 10, opacity: 0.9, interactive: false }).addTo(calque);   // liseré blanc
+    L.polyline(pts, { color: COLORS[i % COLORS.length], weight: hot === i ? 6 : 4, opacity: on ? 0.95 : 0.25, interactive: false, lineJoin: 'round' }).addTo(calque);
+    // Un trait large et invisible par-dessus, pour toucher facilement le tracé au doigt.
+    if (!(domMap.has(i) && !voirDomines)) {
+      L.polyline(pts, { color: '#000', weight: 22, opacity: 0, className: 'touche' })
+        .on('click', ev => { L.DomEvent.stopPropagation(ev); choisirSurCarte(i); }).addTo(calque);
+    }
+  }
+  const A = routes[0].pts[0], B = routes[0].pts.at(-1);
+  for (const [p, nom] of [[A, ends.a.name], [B, ends.b.name]]) {
+    L.circleMarker(p, { radius: 7, color: '#ffffff', weight: 3, fillColor: '#14181f', fillOpacity: 1, interactive: false })
+      .bindTooltip(esc(nom), { permanent: true, direction: 'top', offset: [0, -8], className: 'etiquette' }).addTo(calque);
+  }
+  // On recadre quand de nouveaux trajets élargissent la zone, pas à chaque sélection (pour garder ton zoom).
+  const tous = L.latLngBounds(routes.flatMap(r => [r.pts[0], r.pts.at(-1), ...allege(r.pts).filter((_, j) => j % 20 === 0)]));
+  const cle = tous.toBBoxString();
+  if (cle !== cadrage) { cadrage = cle; carte.fitBounds(tous, { padding: [24, 24] }); }
+}
+
+function choisirSurCarte(i) {
+  hot = i; render();
+  const li = document.querySelector(`#list .row[data-i="${hot}"]`);
+  if (li) li.scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'nearest' });
+}
 
 // Montagne de billets : ils tombent du haut de l'écran et s'empilent en pyramide, puis s'effacent.
 export function pluieDeBillets() {
@@ -555,14 +574,6 @@ $('list').addEventListener('click', e => {
   if (e.target.closest('a, details')) return;
   const li = e.target.closest('.row'); if (!li) return;
   hot = hot === +li.dataset.i ? -1 : +li.dataset.i; render();
-});
-// Toucher un tracé sur la carte sélectionne le trajet et fait défiler la liste jusqu'à lui.
-svg.addEventListener('click', e => {
-  const t = e.target.closest('[data-i]');
-  if (!t) { if (hot !== -1) { hot = -1; render(); } return; }
-  hot = +t.dataset.i; render();
-  const li = document.querySelector(`#list .row[data-i="${hot}"]`);
-  if (li) li.scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'nearest' });
 });
 
 // ---------- Appli installable (PWA) ----------

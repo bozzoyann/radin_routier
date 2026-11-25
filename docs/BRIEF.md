@@ -128,7 +128,7 @@ La v1 est terminée quand, sur téléphone, Toulouse → Lyon affiche au moins 3
 
 **v1.6 : découpage par villes étapes (fait)**
 
-- [x] Après les trajets mixtes, choisir 2 grandes villes (50 000 habitants et plus) traversées entre 30 et 80 % d'un trajet trouvé, espacées de 50 km. Pour chacune : variantes du premier morceau (rapide avec variantes, péage modéré), puis le plus rapide jusqu'à l'arrivée. 6 requêtes, environ 7 s. Sur un long trajet, le serveur ignore des variantes qu'il propose sur un morceau plus court (exemple constaté : un passage par Châteaudun et l'A11).
+- [x] Après les trajets mixtes, choisir 2 grandes villes (50 000 habitants et plus) traversées entre 30 et 80 % d'un trajet trouvé, espacées de 50 km. Pour chacune : variantes du premier morceau (rapide avec variantes, péage modéré), puis le plus rapide jusqu'à l'arrivée. 6 requêtes, environ 7 s. Sur un long trajet, le serveur ignore des variantes qu'il propose sur un morceau plus court.
 
 **v2 : des chiffres plus justes**
 

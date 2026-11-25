@@ -6,13 +6,14 @@ import { villesTraversees, villesEtapes } from './villes.js';
 import { planExploration, coutPlan, produit, assembler, cleMorceau } from './explore.js';
 import { ouvragesTraverses } from './ouvrages.js';
 import { TARIFS_KM } from './peages-data.js';
+import { prixDuJour } from './carburant.js';
 
 // Réglages Valhalla des deux moitiés d'un trajet mixte.
 const RAPIDE = { auto: { use_tolls: 1, use_highways: 1 } };
 const LIBRE = { auto: { use_tolls: 0, use_highways: 0 } };
 
 /** Version affichée en haut de la page : à augmenter à chaque modification publiée. */
-export const VERSION = '1.11.1';
+export const VERSION = '1.12.0';
 export const VERSION_DATE = '25/11/2026';
 
 const $ = id => document.getElementById(id);
@@ -51,9 +52,9 @@ function save() {
   const s = settings(), p = actif();
   for (const k of PROF_KEYS) p[k] = s[k];
   p.carbu = $('carbu').value;
-  prices[p.carbu] = s.prix;
+  if (!$('prixauto').checked) prices[p.carbu] = s.prix;   // le prix du jour ne remplace pas ton prix manuel
   store.set(PKEY, profils);
-  store.set(CKEY, { peage: s.peage, limite: isFinite(limite) ? limite : null, prices });
+  store.set(CKEY, { peage: s.peage, limite: isFinite(limite) ? limite : null, prices, prixAuto: $('prixauto').checked });
   const fr = n => String(n).replace('.', ',');
   $('sum').textContent = `${p.nom} · ${fr(s.prix)} €/L · ${fr(Math.round(s.usure * 1000) / 10)} c€/km`;
 }
@@ -291,6 +292,7 @@ async function run(e) {
     st.textContent = 'Recherche des adresses…';
     const a = await lieuDe('from'); await sleep(300);
     const b = await lieuDe('to');
+    if ($('prixauto').checked) majPrixDuJour(a);   // en parallèle des itinéraires
     choix = { from: a, to: b };
     store.set('vpt-od', { from: $('from').value, to: $('to').value, cfrom: a, cto: b });
     ends = { a, b }; hot = -1; routes = [];
@@ -378,7 +380,25 @@ function chargerReglages() {
   for (const k of CRIT_KEYS) $(k).value = crit[k] != null ? crit[k] : DEF[k];
   if (+$('peage').value === 0.1) $('peage').value = DEF.peage;   // ancien défaut (0,10 €/km) : passe au nouveau
   limite = c && 'limite' in c ? (c.limite === null ? Infinity : c.limite) : LIMITE_DEF;
+  $('prixauto').checked = !(c && c.prixAuto === false);   // prix du jour par défaut
+  $('prix').disabled = $('prixauto').checked;
   afficherProfil();
+}
+
+const prixManuel = c => (prices[c] != null ? prices[c] : FUEL_DEF[c] != null ? FUEL_DEF[c] : DEF.prix);
+
+/** Prix du jour (carburant.js) : autour du lieu `pos` s'il est donné, sinon moyenne nationale. */
+let demandePrix = 0;
+async function majPrixDuJour(pos) {
+  const c = actif().carbu, moi = ++demandePrix;
+  $('prixinfo').textContent = 'Recherche du prix du jour…';
+  const r = await prixDuJour(c, pos);
+  if (moi !== demandePrix || !$('prixauto').checked) return;   // une demande plus récente, ou mode manuel entre-temps
+  if (!r) { $('prixinfo').textContent = 'Prix du jour indisponible : prix saisi utilisé.'; $('prix').disabled = false; return; }
+  $('prix').value = r.prix; $('prix').disabled = true;
+  const jour = new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' });
+  $('prixinfo').textContent = `Moyenne de ${r.n.toLocaleString('fr-FR')} stations ${r.zone === 'local' && pos ? `autour ${/^[aeiouyhéèêâîô]/i.test(pos.name) ? 'd\'' : 'de '}${pos.name}` : 'en France'}, le ${jour}.`;
+  render();
 }
 
 function afficherProfil() {
@@ -389,7 +409,8 @@ function afficherProfil() {
   $('pnom').value = p.nom;
   $('carbu').value = p.carbu;
   $('prixl').textContent = `Prix du ${p.carbu}`;
-  $('prix').value = prices[p.carbu] != null ? prices[p.carbu] : (FUEL_DEF[p.carbu] != null ? FUEL_DEF[p.carbu] : DEF.prix);
+  $('prix').value = prixManuel(p.carbu);
+  if ($('prixauto').checked) majPrixDuJour();
   for (const k of PROF_KEYS) $(k).value = p[k] != null ? p[k] : DEF[k];
   $('pdel').disabled = profils.list.length < 2;
   afficherAssistant();
@@ -412,11 +433,17 @@ $('pdel').addEventListener('click', () => {
   profils.actif = profils.list[0].id; afficherProfil();
 });
 $('carbu').addEventListener('change', () => {
-  prices[actif().carbu] = num('prix');
+  if (!$('prixauto').checked) prices[actif().carbu] = num('prix');
   const c = $('carbu').value; actif().carbu = c;
   $('prixl').textContent = `Prix du ${c}`;
-  const p = prices[c] != null ? prices[c] : FUEL_DEF[c];
-  if (p != null) $('prix').value = p;
+  $('prix').value = prixManuel(c);
+  if ($('prixauto').checked) majPrixDuJour(ends && ends.a);
+  render();
+});
+$('prixauto').addEventListener('change', () => {
+  if ($('prixauto').checked) majPrixDuJour(ends && ends.a);
+  else { $('prix').value = prixManuel(actif().carbu); $('prixinfo').textContent = ''; }
+  $('prix').disabled = $('prixauto').checked;
   render();
 });
 for (const k of KEYS) $(k).addEventListener('input', render);

@@ -137,7 +137,7 @@ La v1 est terminée quand, sur téléphone, Toulouse → Lyon affiche au moins 3
 
 **v2 : des chiffres plus justes**
 
-- [ ] Prix du carburant du jour, récupéré dans les données publiques des prix des carburants.
+- [x] Prix du carburant du jour (`carburant.js`) : moyenne des stations à moins de 30 km du départ ayant mis leur prix à jour depuis moins de 7 jours (flux « Prix des carburants en France », data.economie.gouv.fr), sinon moyenne nationale ; case « Prix du jour » cochée par défaut, le prix manuel reste mémorisé.
 - [x] Ponts et tunnels à péage à leur prix réel (`ouvrages.js`, tarifs 2026, à mettre à jour chaque 1er février) : viaduc de Millau (tarif d'été), ponts de Normandie, de Tancarville et de l'île de Ré (payant vers l'île), tunnels du Mont-Blanc, du Fréjus, Maurice-Lemaire, du Puymorens, Prado-Carénage, Duplex A86. Un ouvrage remplace le prix au kilomètre du tronçon payant qui le contient : Valhalla marque parfois tout un axe comme payant (329 km d'A75 pour le seul viaduc de Millau).
 - [x] Tarif réel au kilomètre de 40 autoroutes (`outils/peages.mjs`, à relancer chaque année) : APRR et AREA à partir des grilles entrée-sortie de data.gouv.fr (avec distance tarifaire) ; ASF, Escota et Cofiroute à partir des tarifs internes publiés en texte par VINCI Autoroutes, la distance étant estimée à vol d'oiseau entre les gares (coordonnées data.gouv.fr) × un facteur de détour de 1,12 mesuré sur APRR. Autoroute peu mesurée : médiane de sa société. L'A75 reste gratuite (seul le viaduc est payant). Sanef et SAPN (A1, A2, A4, A13, A14, A16, A29) : grilles PDF difficiles à lire automatiquement, estimation à la main sur de longs trajets (environ 0,10 €/km, 0,54 €/km pour l'A14), affichée « tarif estimé ».
 - [ ] Script annuel avec une clé de service de péage, lancé à la main, qui génère une base de tarifs (sans clé dans la page).
@@ -156,5 +156,5 @@ Le prototype a été testé contre les vrais serveurs le 25 novembre 2026 : Toul
 - **Péage au kilomètre** : l'estimation peut s'écarter du vrai tarif, surtout sur les tronçons courts et les autoroutes chères. Exemple constaté : le viaduc de Millau (A75) coûte environ 11 € pour quelques kilomètres, alors que l'estimation n'en compte que 6 € sur 59 km.
 - **Seuil « ville » à 50 km/h de moyenne** : c'est une approximation, à ajuster après quelques trajets réels.
 - **Usure et décote** : ce sont des estimations, à remplacer par les vraies factures.
-- **Prix du carburant par défaut** : 2,05 €/L, la moyenne de l'E10 début novembre 2026. Il devient vite faux tant que la v2 ne le récupère pas automatiquement.
+- **Prix du carburant** : moyenne des stations (prix du jour) ; 2,05 €/L seulement si le service est injoignable. La moyenne locale peut s'écarter du prix de la station où l'on fait réellement le plein.
 - **Lien Google Maps** : Google peut recalculer son propre tracé entre les 3 points de passage.

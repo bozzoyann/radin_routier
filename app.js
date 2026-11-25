@@ -11,7 +11,7 @@ const RAPIDE = { auto: { use_tolls: 1, use_highways: 1 } };
 const LIBRE = { auto: { use_tolls: 0, use_highways: 0 } };
 
 /** Version affichée en haut de la page : à augmenter à chaque modification publiée. */
-export const VERSION = '1.8.0';
+export const VERSION = '1.8.1';
 export const VERSION_DATE = '25/11/2026';
 
 const $ = id => document.getElementById(id);
@@ -366,6 +366,7 @@ function chargerReglages() {
   const crit = c || (old && old.s) || {};
   prices = (c && c.prices) || (old && old.prices) || {};
   for (const k of CRIT_KEYS) $(k).value = crit[k] != null ? crit[k] : DEF[k];
+  if (+$('peage').value === 0.1) $('peage').value = DEF.peage;   // ancien défaut (0,10 €/km) : passe au nouveau
   limite = c && 'limite' in c ? (c.limite === null ? Infinity : c.limite) : LIMITE_DEF;
   afficherProfil();
 }

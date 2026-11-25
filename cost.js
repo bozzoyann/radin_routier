@@ -1,7 +1,7 @@
 // Modèle de coût : fonctions pures, sans DOM, testées sous Node (tests/cost.test.js).
 
 /** Valeurs par défaut du profil et des critères (voir docs/BRIEF.md). */
-export const DEF = {prix: 2.05, usure: 0.07, cville: 7.5, croute: 5.5, cauto: 6.5, peage: 0.10, vh: 15};
+export const DEF = {prix: 2.05, usure: 0.07, cville: 7.5, croute: 5.5, cauto: 6.5, peage: 0.09, vh: 15};
 
 /** Sous ce seuil de vitesse moyenne (km/h), une manœuvre hors autoroute compte comme « ville ». */
 export const SEUIL_VILLE = 50;

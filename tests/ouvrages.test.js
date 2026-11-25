@@ -19,10 +19,10 @@ test('ouvragesTraverses : le viaduc de Millau, tarif d\'été et d\'hiver', () =
 });
 
 test('cost : le péage d\'un tronçon avec ouvrage est remplacé par le prix de l\'ouvrage', () => {
-  near(cost(a75, DEF).toll, 33);                                          // sans ouvrage : 330 km × 0,10 €
+  near(cost(a75, DEF).toll, 29.7);                                        // sans ouvrage : 330 km × 0,09 €
   const r = { ...a75, ouvrages: ouvragesTraverses(a75, hiver) };
   near(cost(r, DEF).toll, 11.3);                                          // avec : le viaduc seul
-  near(cost({ ...r, tollKm: 350 }, DEF).toll, 11.3 + 2);                  // + 20 km payants ailleurs
+  near(cost({ ...r, tollKm: 350 }, DEF).toll, 11.3 + 1.8);                // + 20 km payants ailleurs
 });
 
 test('ouvragesTraverses : rien si l\'ouvrage est loin, ou sur un tronçon gratuit', () => {

@@ -19,7 +19,7 @@ Les euros d'un trajet = carburant + usure + péage.
 
 - **Carburant** : chaque tronçon est classé en autoroute, route ou ville, avec la consommation correspondante.
 - **Usure** : 7 c€/km par défaut, estimé pour une compacte essence à fort kilométrage.
-- **Péage** : estimé à 0,10 €/km sur les tronçons payants.
+- **Péage** : estimé à 0,09 €/km sur les tronçons payants.
 
 Le classement « compromis » ajoute le temps passé, compté au prix de ton heure. Le détail est dans [`docs/BRIEF.md`](docs/BRIEF.md).
 

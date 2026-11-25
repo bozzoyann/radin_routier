@@ -83,10 +83,10 @@ test('cost : totaux vérifiables à la main', () => {
   near(c.litres, 12.4);
   near(c.fuel, 12.4 * 2.05);   // 25,42 €
   near(c.wear, 200 * 0.07);    // 14 €
-  near(c.toll, 100 * 0.10);    // 10 €
+  near(c.toll, 100 * 0.09);    // 9 €
   near(c.eur, c.fuel + c.wear + c.toll);
-  near(c.eur, 49.42);
-  near(c.mix, 49.42 + 2.5 * 15); // + 2 h 30 à 15 €/h
+  near(c.eur, 48.42);
+  near(c.mix, 48.42 + 2.5 * 15); // + 2 h 30 à 15 €/h
 });
 
 test('tauxHoraire : ce que rapporte l\'heure perdue', () => {

@@ -247,3 +247,12 @@ test('escalier : presque le même temps et moins cher, il remplace le précéden
   // Le plus rapide reste la référence, même si un trajet à 1 min de plus coûte moins cher.
   assert.deepEqual(escalier([{ min: 100, eur: 50 }, { min: 101, eur: 49 }]), [0]);
 });
+
+import { auDessusLigne } from '../cost.js';
+
+test('auDessusLigne : variante moins bonne que ses deux voisins', () => {
+  const p = { min: 268, eur: 121 }, n = { min: 334, eur: 72 };
+  assert.equal(auDessusLigne(p, n, { min: 329, eur: 112 }), true);    // 1 h de plus pour 9 € : sans intérêt
+  assert.equal(auDessusLigne(p, n, { min: 278, eur: 113 }), false);   // sous la ligne : vraie variante
+  assert.equal(auDessusLigne(p, null, { min: 300, eur: 100 }), false); // pas de voisin suivant
+});

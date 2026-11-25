@@ -1,5 +1,5 @@
 // Interface : saisie, réglages, liste des trajets, carte schématique, exports.
-import { DEF, USURE_DEF, usureParKm, analyse, dedupe, cost, along, domines, marche, escalier, choixLimite, LIMITE_DEF } from './cost.js';
+import { DEF, USURE_DEF, usureParKm, analyse, dedupe, cost, along, domines, marche, escalier, choixLimite, LIMITE_DEF, auDessusLigne } from './cost.js';
 import { PROFILES, DELAI_VALHALLA, geocode, route, suggest } from './routing.js';
 import { candidats, reglagesMixte, joindre } from './mixtes.js';
 import { villesTraversees, villesEtapes } from './villes.js';
@@ -13,7 +13,7 @@ const RAPIDE = { auto: { use_tolls: 1, use_highways: 1 } };
 const LIBRE = { auto: { use_tolls: 0, use_highways: 0 } };
 
 /** Version affichée en haut de la page : à augmenter à chaque modification publiée. */
-export const VERSION = '1.14.1';
+export const VERSION = '1.14.2';
 export const VERSION_DATE = '25/11/2026';
 
 const $ = id => document.getElementById(id);
@@ -103,7 +103,11 @@ function render() {
   const derisoire = x => { const ref = [...utiles].reverse().find(u => u.r.min <= x.r.min); return ref && ref.c.eur - x.c.eur < 1 && x.r.min - ref.r.min > 5; };
   // Et un trajet qui dure presque autant (moins de 2 min d'écart) qu'un trajet de l'escalier moins cher.
   const doublon = x => utiles.some(u => Math.abs(u.r.min - x.r.min) < 2 && u.c.eur <= x.c.eur);
-  const plusChers = tousAutres.filter(x => x.c.eur >= prixRapide || x.domine || derisoire(x) || doublon(x)), autres = tousAutres.filter(x => !plusChers.includes(x));
+  // Et une variante au-dessus de la ligne qui relie ses deux voisins de l'escalier (temps → prix) :
+  // elle est moins bonne que l'un ou l'autre, quelle que soit la valeur qu'on donne au temps.
+  const pt = y => y && { min: y.r.min, eur: y.c.eur };
+  const auDessus = x => { const p = avant(x); return auDessusLigne(pt(p), pt(utiles[utiles.indexOf(p) + 1]), pt(x)); };
+  const plusChers = tousAutres.filter(x => x.c.eur >= prixRapide || x.domine || derisoire(x) || doublon(x) || auDessus(x)), autres = tousAutres.filter(x => !plusChers.includes(x));
   masques = new Set(plusChers.map(x => x.i));
   // Ton choix : le moins cher dans ta limite de temps ; à considérer : un peu au-delà (voir cost.js choixLimite).
   const cl = choixLimite(utiles.map(x => ({ min: x.r.min, eur: x.c.eur })), limite);

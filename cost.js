@@ -237,3 +237,12 @@ export function choixLimite(items, limite) {
   });
   return { choix, suggestion };
 }
+
+/**
+ * Vrai si `x` ({min, eur}) est au-dessus de la ligne droite qui relie `p` et `n` dans le plan temps → prix :
+ * il est alors moins bon que l'un ou l'autre, quelle que soit la valeur donnée au temps.
+ */
+export function auDessusLigne(p, n, x) {
+  if (!n || n.min <= p.min) return false;
+  return x.eur > p.eur + (n.eur - p.eur) * (x.min - p.min) / (n.min - p.min);
+}

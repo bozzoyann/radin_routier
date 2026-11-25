@@ -188,3 +188,7 @@ footer a{color:inherit}
 .prixauto .chk{margin:0}
 .prixauto small{font-size:13px;color:var(--mut)}
 #prix:disabled{opacity:.8}
+/* Bouton d'installation (PWA) */
+.installer{margin-left:auto;background:#fff;color:#1f4fa3;border-color:#fff;font-size:15px}
+.installer[hidden]{display:none}
+.installer+.ver{margin-left:12px}

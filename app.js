@@ -13,7 +13,7 @@ const RAPIDE = { auto: { use_tolls: 1, use_highways: 1 } };
 const LIBRE = { auto: { use_tolls: 0, use_highways: 0 } };
 
 /** Version affichée en haut de la page : à augmenter à chaque modification publiée. */
-export const VERSION = '1.12.0';
+export const VERSION = '1.13.0';
 export const VERSION_DATE = '25/11/2026';
 
 const $ = id => document.getElementById(id);
@@ -554,3 +554,15 @@ svg.addEventListener('click', e => {
   const li = document.querySelector(`#list .row[data-i="${hot}"]`);
   if (li) li.scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'nearest' });
 });
+
+// ---------- Appli installable (PWA) ----------
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => { /* pas de hors-ligne : l'appli marche quand même */ });
+// Android (Chrome, Samsung Internet) : bouton « Installer » quand le navigateur le propose.
+let invitation = null;
+addEventListener('beforeinstallprompt', e => { e.preventDefault(); invitation = e; $('installer').hidden = false; });
+$('installer').addEventListener('click', async () => {
+  if (!invitation) return;
+  invitation.prompt(); await invitation.userChoice.catch(() => null);
+  invitation = null; $('installer').hidden = true;
+});
+addEventListener('appinstalled', () => { $('installer').hidden = true; });

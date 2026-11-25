@@ -92,3 +92,8 @@ footer a{color:inherit}
 .wt input{padding:8px 6px;-moz-appearance:textfield;appearance:textfield}
 .wt input::-webkit-inner-spin-button,.wt input::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
 .wt td:first-child{hyphens:auto;overflow-wrap:break-word;font-size:13px}
+/* Trajets sans intérêt, repliés */
+.more button{width:100%;justify-content:center;flex-wrap:wrap;font-weight:500;color:var(--mut);background:transparent;border-style:dashed;padding:6px 12px;text-align:center}
+.more small{font:400 13px Barlow,sans-serif}
+.row.dom{opacity:.75}
+.row[hidden]{display:none}

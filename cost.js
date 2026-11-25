@@ -129,3 +129,16 @@ export function usureParKm(u) {
   const revision = u.revision.actif ? parKm(u.revision.prix, u.revision.km) : 0;
   return { postes, decote, revision, total: postes.reduce((a, b) => a + b, 0) + decote + revision };
 }
+
+/**
+ * Trajets « sans intérêt » : un autre trajet est à la fois au moins aussi rapide
+ * et au moins aussi bon marché, et strictement meilleur sur l'un des deux.
+ * `items` : [{min, eur}] ; renvoie les indices dominés.
+ */
+export function domines(items) {
+  const out = new Set();
+  items.forEach((x, i) => {
+    if (items.some((o, j) => j !== i && o.min <= x.min && o.eur <= x.eur && (o.min < x.min || o.eur < x.eur))) out.add(i);
+  });
+  return out;
+}

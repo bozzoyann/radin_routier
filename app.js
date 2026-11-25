@@ -1,5 +1,5 @@
 // Interface : saisie, réglages, liste des trajets, carte schématique, exports.
-import { DEF, USURE_DEF, usureParKm, analyse, dedupe, cost, tauxHoraire, along } from './cost.js';
+import { DEF, USURE_DEF, usureParKm, analyse, dedupe, cost, tauxHoraire, along, domines } from './cost.js';
 import { PROFILES, DELAI_VALHALLA, geocode, route, suggest } from './routing.js';
 
 const $ = id => document.getElementById(id);
@@ -12,7 +12,8 @@ const CRIT_KEYS = ['peage', 'vh'];                          // propres à l'util
 let prices = {};               // prix du litre par carburant, partagé entre les voitures
 let profils = null;            // {list: [{id, nom, carbu, usure, cville, croute, cauto, wiz}], actif}
 let choix = { from: null, to: null };   // lieux choisis dans les suggestions
-let routes = [], ends = null, sortBy = 'mix', hot = -1;
+const suggTimer = {};                   // délais de frappe en cours, par champ
+let routes = [], ends = null, sortBy = 'mix', hot = -1, voirDomines = false;
 
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const store = {
@@ -62,8 +63,11 @@ function render() {
   const cheap = rows.reduce((a, b) => b.c.eur < a.c.eur ? b : a);
   const best = rows.reduce((a, b) => b.c.mix < a.c.mix ? b : a);
   const key = { temps: x => x.r.min, euros: x => x.c.eur, mix: x => x.c.mix }[sortBy];
-  rows.sort((a, b) => key(a) - key(b));
-  $('list').innerHTML = rows.map(({ r, i, c }) => {
+  const dom = domines(rows.map(x => ({ min: x.r.min, eur: x.c.eur })));
+  rows.forEach((x, j) => { x.dom = dom.has(j); });
+  domMap = new Set(rows.filter(x => x.dom).map(x => x.i));
+  rows.sort((a, b) => (a.dom - b.dom) || (key(a) - key(b)));
+  const carte = ({ r, i, c, dom: estDomine }) => {
     const badges = [fast.i === i ? 'Le plus rapide' : '', cheap.i === i ? 'Le moins cher' : '', best.i === i ? 'Meilleur compromis' : ''].filter(Boolean)
       .map(b => `<span class="bdg">${b}</span>`).join('');
     const kind = r.tollKm > 1 ? `<span class="kind kA">Péage ~${Math.round(r.tollKm)} km</span>` : `<span class="kind kN">Sans péage</span>`;
@@ -79,7 +83,7 @@ function render() {
       }
     }
     const refs = r.refs.map(x => `<span class="c${x[0] === 'D' ? ' cD' : ''}">${esc(x)}</span>`).join('');
-    return `<li class="row${hot === i ? ' on' : ''}" data-i="${i}">
+    return `<li class="row${hot === i ? ' on' : ''}${estDomine ? ' dom' : ''}" data-i="${i}"${estDomine && !voirDomines ? ' hidden' : ''}>
 <div class="r1"><span class="dot" style="background:${COLORS[i % COLORS.length]}"></span><strong>Trajet ${i + 1}</strong>${kind}${badges}</div>
 <div class="big"><span class="t">${fmtT(r.min)}</span><span class="e">${fmtE(c.eur)}</span></div>
 <div class="refs">${refs}</div>
@@ -88,11 +92,16 @@ function render() {
 <div class="dl">${dl}</div>
 <div class="act"><a class="btn" href="${gmaps(r)}" target="_blank" rel="noopener">Google Maps ↗</a><button type="button" class="btn" data-gpx="${i}">GPX</button></div>
 </li>`;
-  }).join('');
+  };
+  const nDom = rows.filter(x => x.dom).length;
+  const bascule = nDom ? `<li class="more"><button type="button" id="vdom" aria-expanded="${voirDomines}">${voirDomines ? 'Masquer' : 'Voir'} ${nDom} trajet${nDom > 1 ? 's' : ''} sans intérêt <small>(plus lent${nDom > 1 ? 's' : ''} et plus cher${nDom > 1 ? 's' : ''} qu'un autre)</small></button></li>` : '';
+  const html = rows.map(carte), k = rows.length - nDom;
+  $('list').innerHTML = html.slice(0, k).join('') + bascule + html.slice(k).join('');
   draw();
 }
 
 const svg = $('map');
+let domMap = new Set();
 function draw() {
   if (!routes.length) return;
   const W = svg.clientWidth || 600, H = svg.clientHeight || 300, pad = 28;
@@ -107,7 +116,7 @@ function draw() {
   const lines = order.map(i => {
     const r = routes[i], step = Math.max(1, Math.floor(r.pts.length / 1500));
     const d = r.pts.filter((_, j) => j % step === 0 || j === r.pts.length - 1).map((p, j) => (j ? 'L' : 'M') + P(p).map(v => v.toFixed(1)).join(' ')).join('');
-    const on = hot === -1 || hot === i;
+    const on = hot === i || (hot === -1 && !(domMap.has(i) && !voirDomines));
     return `<path d="${d}" fill="none" stroke="${COLORS[i % COLORS.length]}" stroke-width="${hot === i ? 5 : 3}" stroke-linejoin="round" stroke-linecap="round" opacity="${on ? 1 : 0.25}"/>`;
   }).join('');
   const A = P(routes[0].pts[0]), B = P(routes[0].pts[routes[0].pts.length - 1]);
@@ -120,6 +129,8 @@ new ResizeObserver(draw).observe(svg);
 async function run(e) {
   e.preventDefault();
   const st = $('st'), go = $('go'); st.className = ''; go.disabled = true;
+  clearTimeout(suggTimer.from); clearTimeout(suggTimer.to);
+  for (const u of document.querySelectorAll('.sugg')) u.hidden = true;
   const t0 = performance.now();
   try {
     st.textContent = 'Recherche des adresses…';
@@ -261,10 +272,10 @@ function autocompletion(id) {
   inp.addEventListener('input', () => {
     choix[id] = null; clearTimeout(timer); if (ctrl) ctrl.abort();
     if (inp.value.trim().length < 3) { fermer(); return; }
-    timer = setTimeout(async () => {
+    timer = suggTimer[id] = setTimeout(async () => {
       ctrl = new AbortController();
       try { items = await suggest(inp.value, { signal: ctrl.signal }); } catch (e) { return; /* annulée ou hors ligne */ }
-      if (!items.length) { fermer(); return; }
+      if (!items.length || document.activeElement !== inp) { fermer(); return; }
       ul.innerHTML = items.map((l, i) => `<li role="option" id="${id}-o${i}" aria-selected="false" data-i="${i}">${esc(l.name)}${l.detail ? `<small>${esc(l.detail)}</small>` : ''}</li>`).join('');
       ul.hidden = false; inp.setAttribute('aria-expanded', 'true'); sel = -1;
     }, 350);   // on attend une pause dans la frappe : Photon est un service partagé
@@ -297,6 +308,7 @@ document.querySelector('.sort').addEventListener('click', e => {
   render();
 });
 $('list').addEventListener('click', e => {
+  if (e.target.closest('#vdom')) { voirDomines = !voirDomines; render(); return; }
   const g = e.target.closest('[data-gpx]'); if (g) { gpx(routes[+g.dataset.gpx], +g.dataset.gpx); return; }
   if (e.target.closest('a')) return;
   const li = e.target.closest('.row'); if (!li) return;

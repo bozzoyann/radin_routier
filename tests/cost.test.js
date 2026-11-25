@@ -114,3 +114,18 @@ test('usureParKm : révision au km et valeurs absurdes ignorées', () => {
   const z = usureParKm({ postes: [{ prix: 500, km: 0 }, { prix: -3, km: 1000 }], decote: { actuelle: 3000, future: 5000, km: 1000 }, revision: { actif: true, prix: 100, km: 0 } });
   near(z.total, 0); // durée nulle, prix négatif, voiture qui prend de la valeur : rien
 });
+
+import { domines } from '../cost.js';
+
+test('domines : plus lent ET plus cher qu\'un autre', () => {
+  const t = [
+    { min: 220, eur: 106 }, // 0 le plus rapide
+    { min: 227, eur: 83 },  // 1
+    { min: 309, eur: 55 },  // 2
+    { min: 334, eur: 65 },  // 3 dominé par 2
+    { min: 233, eur: 110 }, // 4 dominé par 0 et 1
+    { min: 344, eur: 54 }   // 5 le moins cher
+  ];
+  assert.deepEqual([...domines(t)].sort(), [3, 4]);
+  assert.deepEqual([...domines([{ min: 1, eur: 1 }, { min: 1, eur: 1 }])], []); // égalité parfaite : aucun ne domine
+});

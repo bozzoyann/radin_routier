@@ -65,3 +65,12 @@ test('suggest : doublons retirés, 5 au plus', async () => {
   assert.equal(s.length, 5);
   assert.deepEqual(s.map(x => x.name), ['Lyon (69)', 'a (75)', 'b (75)', 'c (75)', 'd (75)']);
 });
+
+test('lieu : département retrouvé sans code postal (ville entière)', () => {
+  const f = (properties) => ({ geometry: { coordinates: [0, 0] }, properties });
+  assert.equal(lieu(f({ name: 'Brest', county: 'Finistère', country: 'France' })).name, 'Brest (29)');
+  assert.equal(lieu(f({ name: 'Dijon', county: "Côte-d'Or", country: 'France' })).name, 'Dijon (21)');
+  assert.equal(lieu(f({ name: 'Paris', state: 'Paris', country: 'France' })).name, 'Paris (75)');
+  assert.equal(lieu(f({ name: 'Nulle-part', country: 'France' })).name, 'Nulle-part');
+  assert.equal(lieu(f({ name: 'Genève', postcode: '1201', country: 'Suisse' })).name, 'Genève'); // pas de faux département
+});

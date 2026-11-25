@@ -12,7 +12,7 @@ const RAPIDE = { auto: { use_tolls: 1, use_highways: 1 } };
 const LIBRE = { auto: { use_tolls: 0, use_highways: 0 } };
 
 /** Version affichée en haut de la page : à augmenter à chaque modification publiée. */
-export const VERSION = '1.11.0';
+export const VERSION = '1.11.1';
 export const VERSION_DATE = '25/11/2026';
 
 const $ = id => document.getElementById(id);
@@ -97,7 +97,9 @@ function render() {
   const prixRapide = utiles[0].c.eur;
   // Sans intérêt (plus cher que le plus rapide, ou plus lent ET plus cher qu'un autre) : masqués, en pointillés sur la carte.
   // Seuls restent dans le pli les trajets écartés de peu (marche de moins de 12 %), utiles à analyser.
-  const plusChers = tousAutres.filter(x => x.c.eur >= prixRapide || x.domine), autres = tousAutres.filter(x => !plusChers.includes(x));
+  // Aussi : moins de 1 € gagné pour plus de 5 min perdues par rapport au trajet de l'escalier juste plus rapide.
+  const derisoire = x => { const ref = [...utiles].reverse().find(u => u.r.min <= x.r.min); return ref && ref.c.eur - x.c.eur < 1 && x.r.min - ref.r.min > 5; };
+  const plusChers = tousAutres.filter(x => x.c.eur >= prixRapide || x.domine || derisoire(x)), autres = tousAutres.filter(x => !plusChers.includes(x));
   masques = new Set(plusChers.map(x => x.i));
   // Ton choix : le moins cher dans ta limite de temps ; à considérer : un peu au-delà (voir cost.js choixLimite).
   const cl = choixLimite(utiles.map(x => ({ min: x.r.min, eur: x.c.eur })), limite);

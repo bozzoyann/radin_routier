@@ -1,212 +1,260 @@
-/* Radin routier : signalisation routière française, sobre.
-   Bleu autoroute, rouge et jaune des cartouches de routes, Barlow (proche de la typo des panneaux).
+/* Radin routier : style « appli de navigation ».
+   Carte plein écran, barre de recherche flottante, pilules, panneau arrondi par-dessus la carte
+   (sur le côté quand l'écran est large). Bleu roi profond, coins arrondis, ombres douces.
    Pas d'émoji : des pictogrammes dessinés en SVG (classe .pic, .icone). */
 :root{color-scheme:light dark;
-  --bg:light-dark(#f4f5f6,#15171b);--surf:light-dark(#ffffff,#1e2127);--ink:light-dark(#14181f,#eef0f3);
-  --mut:light-dark(#555c68,#a3a9b5);--line:light-dark(#d9dce1,#2f333b);--champ:light-dark(#c8ccd3,#3a3f48);
-  --bleu:#1f4fa3;--rouge:#c8102e;--jaune:#f5c400;--vert:#17703f;--asphalte:#3a3f47;
-  --ok:light-dark(#17703f,#4cc283);--attention:light-dark(#8a5200,#f0b45a);--bad:light-dark(#b3261e,#ff8a80)}
+  --bg:light-dark(#eef1f4,#111318);--surf:light-dark(#ffffff,#1b1e24);--carte:light-dark(#f4f5f7,#242831);
+  --champ:light-dark(#f1f3f5,#272b34);--ink:light-dark(#111827,#eef0f3);--mut:light-dark(#6b7280,#a3a9b5);
+  --line:light-dark(#e5e7eb,#2f333b);--pointille:light-dark(#c3c8d0,#4a505b);
+  --bleu:light-dark(#1c3f94,#3a5fc0);--bleu-txt:light-dark(#1c3f94,#9db4f0);--bleu-pale:light-dark(#e6ebf6,#1f2a44);
+  --vert:light-dark(#15803d,#4cc283);--vert-pale:light-dark(#e7f6ec,#163222);
+  --orange:light-dark(#b45309,#f0b45a);--orange-pale:light-dark(#fdf1e2,#3a2a14);
+  --bad:light-dark(#b3261e,#ff8a80);--rouge:#dc2626;--jaune:#facc15;--asphalte:#374151;
+  --ombre:0 6px 24px rgb(17 24 39/.14);--ombre-pt:0 2px 8px rgb(17 24 39/.12);
+  --haut-carte:46dvh}
 :root[data-theme=light]{color-scheme:light}:root[data-theme=dark]{color-scheme:dark}
 *{box-sizing:border-box;min-width:0}
-body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.45 Barlow,system-ui,sans-serif;overflow-x:clip}
-a{color:light-dark(var(--bleu),#8fb3ff)}
-main{max-width:1100px;margin:0 auto;padding:0 0 24px}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.45 Inter,system-ui,sans-serif;overflow-x:clip}
+a{color:var(--bleu-txt)}
+main{max-width:520px;margin:0 auto;padding:0 0 24px;position:relative;z-index:1}
 .cond{font-family:"Barlow Semi Condensed",sans-serif}
 .nombre{font-variant-numeric:tabular-nums}
 input:focus-visible,select:focus-visible,button:focus-visible,a:focus-visible,summary:focus-visible{outline:3px solid var(--jaune);outline-offset:2px}
+button{font-family:inherit}
 
 /* Pictogrammes : trait, couleur du texte */
 .pic,.icone svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none}
-.icone{width:44px;height:44px;flex:none;display:inline-flex;align-items:center;justify-content:center;border:1.5px solid var(--champ);border-radius:6px;background:var(--surf);color:var(--ink);cursor:pointer;padding:0}
+.icone{width:44px;height:44px;flex:none;display:inline-flex;align-items:center;justify-content:center;border:0;border-radius:12px;background:var(--champ);color:var(--ink);cursor:pointer;padding:0}
 .icone svg{width:20px;height:20px}
+.icone[aria-expanded=true]{background:var(--bleu-pale);color:var(--bleu-txt)}
 
-/* Bandeau : un cartouche de panneau */
-.tete{background:var(--bleu);color:#fff;padding:14px 16px;display:flex;align-items:center;gap:12px}
-.cartouche{border:2px solid #fff;border-radius:6px;padding:4px 10px;font:700 20px "Barlow Semi Condensed",sans-serif;letter-spacing:.02em}
-.ver{margin-left:auto;font-size:12px;opacity:.8;white-space:nowrap}
-.installer{margin-left:auto;min-height:36px;border:1.5px solid #fff;border-radius:6px;background:transparent;color:#fff;font:600 14px "Barlow Semi Condensed",sans-serif;padding:0 10px;cursor:pointer}
-.installer[hidden]{display:none}.installer+.ver{margin-left:12px}
+/* Haut de page : marque, version, recherche, pilules */
+.haut{padding:12px 12px 16px;display:flex;flex-direction:column;gap:10px}
+.tete{display:flex;align-items:center;gap:10px;min-height:40px;padding:0 4px}
+.marque{display:inline-flex;align-items:center;gap:8px;font:700 18px Inter,sans-serif;color:var(--bleu-txt)}
+.marque img{border-radius:8px}
+.ver{margin-left:auto;font-size:12px;color:var(--mut);white-space:nowrap}
+.installer{margin-left:auto;min-height:36px;border:0;border-radius:18px;background:var(--bleu);color:#fff;font:600 14px Inter,sans-serif;padding:0 14px;cursor:pointer}
+.installer[hidden]{display:none}.installer+.ver{margin-left:10px}
 
-/* Formulaire : départ, arrivée, réglages */
-form{display:flex;flex-direction:column}
-.plaque{display:none;background:var(--surf);padding:10px 16px;align-items:center;gap:10px;border-bottom:1px solid var(--line)}
-.plaque-noms{display:flex;flex-direction:column;flex-grow:1;font:600 19px/1.25 "Barlow Semi Condensed",sans-serif}
+/* Formulaire : des cartes arrondies */
+form{display:flex;flex-direction:column;gap:10px}
+.plaque,.od,.regl{background:var(--surf);border-radius:16px;box-shadow:var(--ombre)}
+.plaque{display:none;padding:6px 6px 6px 16px;align-items:center;gap:8px;min-height:56px}
+.plaque-noms{display:flex;flex-direction:column;flex-grow:1;line-height:1.25}
+.plaque-noms span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.plaque-noms span:first-child{font-size:13px;color:var(--mut)}
+.plaque-noms span:last-child{font-size:16px;font-weight:600}
 form.replie .plaque{display:flex}
-form.replie .od,form.replie .go{display:none}
-.od{background:var(--surf);padding:12px 16px;display:grid;grid-template-columns:minmax(0,1fr) 44px minmax(0,1fr);gap:8px 10px;align-items:end;border-bottom:1px solid var(--line)}
-.ac{position:relative;display:grid;gap:3px}
+form.replie .od,form.replie .go,form.replie .regl:not([open]){display:none}
+.od{padding:12px;display:grid;grid-template-columns:minmax(0,1fr) 44px minmax(0,1fr);gap:8px 10px;align-items:end}
+.ac{position:relative;display:grid;gap:4px}
 label{display:grid;gap:4px;font-size:13px;color:var(--mut)}
-.ac>label{font-size:12px;text-transform:uppercase;letter-spacing:.06em}
-input,select{font:500 16px Barlow,sans-serif;color:var(--ink);background:var(--surf);border:1.5px solid var(--champ);border-radius:6px;padding:0 12px;min-height:44px;width:100%}
+input,select{font:500 16px Inter,sans-serif;color:var(--ink);background:var(--champ);border:1.5px solid transparent;border-radius:12px;padding:0 12px;min-height:46px;width:100%}
+input:focus,select:focus{border-color:var(--bleu-txt);outline:0}
 .u{display:flex;align-items:center;gap:6px}.u span{font-size:13px;white-space:nowrap;color:var(--mut)}.u.court{max-width:200px}
 @media(max-width:420px){.od{grid-template-columns:minmax(0,1fr) 44px}.od .ac:last-child{grid-column:1}.swap{grid-row:1 / span 2;grid-column:2;align-self:center}}
 
 /* Suggestions d'adresses */
-.sugg{position:absolute;z-index:500;top:100%;left:0;right:0;margin:4px 0 0;padding:4px;list-style:none;background:var(--surf);border:1.5px solid var(--champ);border-radius:6px;box-shadow:0 6px 20px rgb(0 0 0/.18)}
+.sugg{position:absolute;z-index:500;top:100%;left:0;right:0;margin:6px 0 0;padding:6px;list-style:none;background:var(--surf);border-radius:14px;box-shadow:0 10px 30px rgb(17 24 39/.22)}
 .sugg[hidden]{display:none}
-.sugg li{min-height:44px;padding:8px 10px;border-radius:4px;cursor:pointer;display:flex;flex-direction:column;justify-content:center;line-height:1.25}
+.sugg li{min-height:44px;padding:8px 10px;border-radius:10px;cursor:pointer;display:flex;flex-direction:column;justify-content:center;line-height:1.25;color:var(--ink)}
 .sugg li small{color:var(--mut)}
-.sugg li[aria-selected=true],.sugg li:hover{background:var(--bg)}
+.sugg li[aria-selected=true],.sugg li:hover{background:var(--champ)}
 
-/* Réglages : une ligne repliée, le profil résumé */
-.regl{background:var(--surf);border-bottom:1px solid var(--line)}
-.regl>summary{min-height:48px;padding:0 16px;display:flex;align-items:center;gap:10px;cursor:pointer;list-style:none}
+/* Réglages */
+.regl>summary{min-height:52px;padding:0 16px;display:flex;align-items:center;gap:10px;cursor:pointer;list-style:none}
 .regl>summary::-webkit-details-marker{display:none}
-.regl-titre{font:600 15px "Barlow Semi Condensed",sans-serif;flex:none}
+.regl-titre{font-weight:600;font-size:15px;flex:none}
 .sum{font-size:13px;color:var(--mut);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .chevron{margin-left:auto;transition:transform .15s}
 details[open]>summary .chevron{transform:rotate(180deg)}
-.regl-corps{padding:4px 16px 16px;display:flex;flex-direction:column;gap:18px}
+.regl-corps{padding:4px 16px 16px;display:flex;flex-direction:column;gap:20px}
 fieldset{border:0;margin:0;padding:0;display:flex;flex-direction:column;gap:10px}
-legend,.calcul summary,.lim .etiq{font:600 13px Barlow,sans-serif;text-transform:uppercase;letter-spacing:.08em;color:var(--mut)}
-.regl-corps legend{width:100%;border-bottom:2px solid var(--ink);padding-bottom:4px;margin-bottom:10px}
+legend{font-weight:600;font-size:15px;color:var(--ink);padding:0;margin-bottom:10px}
 .prof{display:grid;grid-template-columns:minmax(0,1fr) 44px 44px;gap:8px;align-items:end}
 .deux{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
 .prixauto{display:flex;flex-wrap:wrap;align-items:center;gap:0 12px}
 .prixauto small{font-size:13px;color:var(--mut)}
-#prix:disabled{background:var(--bg);opacity:1;color:var(--ink)}
-.chk{display:flex;gap:10px;align-items:center;min-height:44px;color:var(--ink);font-size:15px}
-.chk input{width:22px;height:22px;min-height:0;flex:none;accent-color:var(--bleu)}
-.conso{display:grid;gap:4px}.conso-titre{font-size:13px;color:var(--mut)}
-.trois{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));border:1.5px solid var(--champ);border-radius:6px;overflow:hidden}
-.trois label{padding:6px 4px 2px;text-align:center;font-size:11px;text-transform:uppercase;letter-spacing:.06em;border-right:1px solid var(--champ)}
-.trois label:last-child{border-right:0}
-.trois input{border:0;text-align:center;font:600 20px "Barlow Semi Condensed",sans-serif;padding:0;min-height:36px}
+#prix:disabled{opacity:1;color:var(--ink);background:var(--champ)}
+/* Cases à cocher : des interrupteurs */
+.chk{display:flex;gap:12px;align-items:center;min-height:44px;color:var(--ink);font-size:15px;cursor:pointer}
+.chk input{appearance:none;-webkit-appearance:none;flex:none;width:46px;height:28px;min-height:0;padding:0;border:0;border-radius:14px;background:var(--pointille);position:relative;cursor:pointer;transition:background .15s}
+.chk input::before{content:"";position:absolute;left:3px;top:3px;width:22px;height:22px;border-radius:11px;background:#fff;box-shadow:0 1px 3px rgb(0 0 0/.25);transition:transform .15s}
+.chk input:checked{background:var(--bleu)}
+.chk input:checked::before{transform:translateX(18px)}
+.conso{display:grid;gap:6px}.conso-titre{font-size:13px;color:var(--mut)}
+.trois{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.trois label{background:var(--champ);border-radius:14px;padding:8px 4px 2px;text-align:center;font-size:12px}
+.trois input{background:transparent;border:0;text-align:center;font:700 22px "Barlow Semi Condensed",sans-serif;padding:0;min-height:36px}
 .usure{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:end}
-.secondaire{min-height:44px;padding:0 14px;border:1.5px solid var(--bleu);border-radius:6px;background:var(--surf);color:light-dark(var(--bleu),#8fb3ff);font:600 15px "Barlow Semi Condensed",sans-serif;cursor:pointer}
+.secondaire{min-height:44px;padding:0 16px;border:0;border-radius:12px;background:var(--bleu-pale);color:var(--bleu-txt);font:600 15px Inter,sans-serif;cursor:pointer}
 .hint{margin:0;font-size:13px;color:var(--mut)}
-.go{margin:16px;min-height:52px;border:0;border-radius:6px;background:var(--vert);color:#fff;font:700 19px "Barlow Semi Condensed",sans-serif;letter-spacing:.02em;cursor:pointer}
+.go{min-height:54px;border:0;border-radius:16px;background:var(--bleu);color:#fff;font:700 17px Inter,sans-serif;cursor:pointer;box-shadow:0 6px 18px rgb(28 63 148/.35)}
 .go[disabled]{opacity:.6;cursor:wait}
 
 /* Assistant usure */
 .wiz{border-top:1px solid var(--line);padding-top:6px}
-.wiz>summary{min-height:44px;display:flex;align-items:center;cursor:pointer;font:600 15px "Barlow Semi Condensed",sans-serif}
+.wiz>summary{min-height:44px;display:flex;align-items:center;cursor:pointer;font-weight:600;font-size:15px}
 .wt{width:100%;border-collapse:collapse;font-size:14px;table-layout:fixed;margin-top:6px}
 .wt th{text-align:left;font-weight:500;color:var(--mut);padding:2px 4px}
 .wt th:nth-child(1){width:31%}.wt th:nth-child(2){width:22%}.wt th:nth-child(3){width:30%}.wt th:nth-child(4){width:17%}
 .wt td{padding:3px 4px}.wt td:first-child{font-size:13px;overflow-wrap:break-word}
 .wt td:last-child,.wt th:last-child{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
-.wt input{padding:8px 6px;font-size:15px;-moz-appearance:textfield;appearance:textfield}
+.wt input{padding:8px 6px;font-size:15px;border-radius:10px;-moz-appearance:textfield;appearance:textfield}
 .wt input::-webkit-inner-spin-button,.wt input::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
 .dec{margin-top:12px;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
-.dec legend{grid-column:1/-1;border:0;margin:0;color:var(--ink);text-transform:none;letter-spacing:0;font-size:14px}
+.dec legend{grid-column:1/-1;margin:0;font-size:14px}
 .wline{grid-column:1/-1;margin:0;font-size:14px}
 .revp{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.revp[hidden]{display:none}
 .wtot{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin:12px 0 0}
 .wtot b{font:700 22px "Barlow Semi Condensed",sans-serif}
 @media(max-width:420px){.dec{grid-template-columns:repeat(2,minmax(0,1fr))}}
 
-/* État (adresses, erreurs) et temps accepté */
-#st{margin:10px 16px 0;color:var(--mut);min-height:0}#st:empty{display:none}#st.err{color:var(--bad)}
-.lim{padding:12px 16px 4px;display:flex;flex-direction:column;gap:8px}.lim[hidden]{display:none}
-.reglette{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));border:1.5px solid var(--ink);border-radius:6px;overflow:hidden;max-width:520px}
-.reglette button{min-height:44px;border:0;border-right:1px solid var(--ink);background:var(--surf);color:var(--ink);font:600 15px "Barlow Semi Condensed",sans-serif;cursor:pointer}
-.reglette button:last-child{border-right:0}
-.reglette button[aria-pressed=true]{background:var(--ink);color:var(--bg)}
+/* État (adresses, erreurs) et temps accepté : des pilules */
+#st{margin:0;align-self:flex-start;background:var(--surf);border-radius:12px;padding:8px 12px;box-shadow:var(--ombre-pt);color:var(--mut);font-size:14px}
+#st:empty{display:none}#st.err{color:var(--bad)}
+.lim[hidden]{display:none}
+.reglette{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;padding:2px 2px 6px;margin:0 -2px}
+.reglette::-webkit-scrollbar{display:none}
+.reglette .etiq,.reglette button{flex:none;height:38px;padding:0 14px;border-radius:19px;background:var(--surf);box-shadow:var(--ombre-pt);display:inline-flex;align-items:center;font-size:14px;white-space:nowrap}
+.reglette .etiq{color:var(--mut)}
+.reglette button{border:0;color:var(--ink);font-weight:500;cursor:pointer;min-width:44px;justify-content:center}
+.reglette button[aria-pressed=true]{background:var(--bleu);color:#fff;font-weight:600;box-shadow:0 2px 8px rgb(28 63 148/.35)}
 
-/* Résultats : carte puis synthèse et escalier */
-#res{padding:12px 16px 0}
-.fig{position:sticky;top:0;z-index:3;height:30vh;min-height:200px;max-height:380px;border-radius:6px;overflow:hidden;background:var(--line);box-shadow:0 4px 12px rgb(0 0 0/.12)}
+/* Le panneau des résultats */
+.feuille{padding:0 16px}
+#list{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:8px}
+.fig[hidden]{display:none}
+.fig{position:fixed;top:0;left:0;right:0;height:calc(var(--haut-carte) + 24px);z-index:0;background:var(--line)}
 .fig>#carte{position:absolute;inset:0}
-#list{list-style:none;padding:0;margin:12px 0 0;display:flex;flex-direction:column}
+
+/* Téléphone, résultats affichés : carte en fond, recherche flottante, panneau à mi-hauteur.
+   On fait simplement défiler la page : le panneau monte par-dessus la carte. */
+body.resultats main{max-width:none;padding:0}
+body.resultats .haut{min-height:var(--haut-carte);pointer-events:none}
+body.resultats .haut>*,body.resultats .reglette>*{pointer-events:auto}
+body.resultats .tete,body.resultats .lim,body.resultats .reglette{pointer-events:none}
+body.resultats .marque,body.resultats .ver{background:var(--surf);border-radius:14px;padding:4px 10px 4px 4px;box-shadow:var(--ombre-pt);pointer-events:auto}
+body.resultats .installer{pointer-events:auto}
+body.resultats .ver{padding:6px 10px}
+body.resultats .marque img{width:24px;height:24px}
+body.resultats .marque{font-size:15px}
+body.resultats .feuille{background:var(--surf);border-radius:22px 22px 0 0;box-shadow:0 -8px 30px rgb(17 24 39/.18);padding:8px 16px 24px;min-height:70dvh;position:relative}
+body.resultats .feuille::before{content:"";display:block;width:40px;height:5px;border-radius:3px;background:var(--pointille);margin:0 auto 12px}
+body.resultats .leaflet-bottom{bottom:24px}
+@media(max-width:719px){body.resultats .leaflet-control-zoom{display:none}}
+
+/* Écran large (Fold ouvert, ordinateur) : panneau flottant à gauche, carte plein écran */
 @media(min-width:720px){
-  #res{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:20px;align-items:start}
-  #res>.fig{top:12px;height:calc(100dvh - 24px);max-height:640px;min-height:300px}
-  #list{margin-top:0}
+  body.resultats main{width:400px;margin:12px;background:var(--surf);border-radius:22px;box-shadow:0 8px 30px rgb(17 24 39/.18);min-height:calc(100dvh - 24px)}
+  body.resultats .haut{min-height:0;pointer-events:auto;padding:12px 14px 0}
+  body.resultats .tete,body.resultats .lim,body.resultats .reglette{pointer-events:auto}
+  body.resultats .marque,body.resultats .ver{box-shadow:none;background:none;padding:0}
+  body.resultats .plaque,body.resultats .od,body.resultats .regl{box-shadow:none;background:var(--carte)}
+  body.resultats .plaque .icone{background:var(--surf)}
+  body.resultats .reglette .etiq,body.resultats .reglette button:not([aria-pressed=true]){box-shadow:none;background:var(--champ)}
+  body.resultats #st{box-shadow:none;background:var(--champ)}
+  body.resultats .feuille{background:none;box-shadow:none;border-radius:0;min-height:0;padding:12px 14px 16px}
+  body.resultats .feuille::before{display:none}
+  .fig{height:100dvh}
+  body.resultats .leaflet-bottom{bottom:0}
 }
 
-/* Synthèse : un panneau bleu à double bordure blanche */
-.synth{background:var(--bleu);color:#fff;border-radius:8px;padding:14px 16px;display:flex;flex-direction:column;gap:10px;border:3px solid #fff;box-shadow:0 0 0 1.5px var(--bleu);margin-bottom:14px}
-.synth a{color:#fff}
-.synth .tag{font:600 13px Barlow,sans-serif;text-transform:uppercase;letter-spacing:.08em;opacity:.85}
+/* Synthèse : en tête du panneau */
+.synth{display:flex;flex-direction:column;gap:10px;padding:0 0 14px;border-bottom:1px solid var(--line);margin-bottom:6px}
+.synth .tag{font-size:13px;font-weight:600;color:var(--bleu-txt);background:var(--bleu-pale);border-radius:8px;padding:3px 8px}
 .synth .ligne{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
 .synth .droite{margin-left:auto}
-.synth .prix{font:700 40px/1 "Barlow Semi Condensed",sans-serif;font-variant-numeric:tabular-nums}
-.synth .duree{font:600 24px/1 "Barlow Semi Condensed",sans-serif;font-variant-numeric:tabular-nums}
-.synth .ecart{font:600 17px "Barlow Semi Condensed",sans-serif;font-variant-numeric:tabular-nums}
-.synth .ecart span{opacity:.75;font-weight:500}
-.synth .sep{height:1px;background:rgb(255 255 255/.35)}
-.synth .sel{background:none;border:0;padding:0;color:inherit;font:inherit;cursor:pointer;text-align:left;min-height:32px}
-.synth .sel:hover{text-decoration:underline}
-.synth .compte{font-size:13px;opacity:.85}
-.synth.bravo{box-shadow:0 0 0 1.5px var(--bleu),0 0 0 6px var(--jaune)}
-.synth .neuf{font:700 13px Barlow,sans-serif;text-transform:uppercase;letter-spacing:.06em;background:var(--jaune);color:#14181f;border-radius:3px;padding:2px 6px}
+.synth .prix{font:700 44px/1 "Barlow Semi Condensed",sans-serif;font-variant-numeric:tabular-nums}
+.synth .duree{font:600 24px/1 "Barlow Semi Condensed",sans-serif;font-variant-numeric:tabular-nums;color:var(--mut)}
+.synth .ecart{align-self:flex-start;font-size:14px;font-weight:600;color:var(--vert);background:var(--vert-pale);border-radius:10px;padding:4px 10px;font-variant-numeric:tabular-nums}
+.synth .ecart span{font-weight:400;opacity:.8}
+.synth .sep{height:1px;background:var(--line)}
+.synth .sel{background:none;border:0;padding:0;color:var(--bleu-txt);font:600 14px Inter,sans-serif;cursor:pointer;text-align:left;min-height:32px}
+.synth .compte{font-size:13px;color:var(--mut)}
+.synth .neuf{font-size:12px;font-weight:700;background:var(--jaune);color:#111827;border-radius:8px;padding:3px 8px}
+.synth.bravo .prix{color:var(--vert)}
+.actions{display:flex;gap:10px}
+.actions .maps{flex-grow:1;min-height:48px;border-radius:14px;background:var(--bleu);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:600;text-decoration:none}
 
-/* Avancement : une route qui se trace */
+/* Avancement : une petite route qui se trace */
 #avancement{display:flex;flex-direction:column;gap:8px}#avancement:empty{display:none}
-.avance-txt{display:flex;align-items:baseline;gap:8px;font-size:14px}
-.avance-txt .pc{margin-left:auto;font:600 15px "Barlow Semi Condensed",sans-serif;font-variant-numeric:tabular-nums}
-.route-barre{height:14px;border-radius:3px;background:var(--asphalte);border-top:2px solid #fff;border-bottom:2px solid #fff;position:relative;overflow:hidden}
-.route-barre .trace{position:absolute;left:0;top:4px;height:2px;background-image:repeating-linear-gradient(to right,#fff 0 12px,transparent 12px 20px);transition:width .3s}
-.route-barre .voiture{position:absolute;top:1px;width:8px;height:8px;margin-left:-6px;background:var(--jaune);border-radius:2px;transition:left .3s}
-.contour{min-height:44px;border:2px solid #fff;border-radius:6px;background:transparent;color:#fff;display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap;font:600 16px "Barlow Semi Condensed",sans-serif;cursor:pointer;padding:4px 12px}
-.contour small{font:400 13px Barlow,sans-serif;opacity:.85}
+.avance-txt{display:flex;align-items:baseline;gap:8px;font-size:13px;color:var(--mut)}
+.avance-txt .pc{margin-left:auto;font-weight:600;color:var(--ink);font-variant-numeric:tabular-nums}
+.route-barre{height:10px;border-radius:5px;background:var(--asphalte);position:relative;overflow:hidden}
+.route-barre .trace{position:absolute;left:0;top:4px;height:2px;background-image:repeating-linear-gradient(to right,#fff 0 10px,transparent 10px 17px);transition:width .3s}
+.route-barre .voiture{position:absolute;top:2px;width:6px;height:6px;margin-left:-5px;background:var(--jaune);border-radius:2px;transition:left .3s}
+.contour{min-height:48px;border:0;border-radius:14px;background:var(--champ);color:var(--ink);display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap;font:600 15px Inter,sans-serif;cursor:pointer;padding:4px 14px}
+.contour small{font-weight:400;font-size:13px;color:var(--mut)}
 @media(prefers-reduced-motion:reduce){.route-barre .trace,.route-barre .voiture{transition:none}}
 
-/* L'escalier : une ligne verticale, un point par trajet */
-.tr{display:grid;grid-template-columns:28px minmax(0,1fr);column-gap:12px}
-.tr .rail{display:flex;flex-direction:column;align-items:center}
-.tr .point{width:14px;height:14px;border-radius:7px;border:3px solid var(--surf);box-shadow:0 0 0 1px var(--champ);flex:none;margin-top:6px}
-.tr .fil{width:6px;flex-grow:1;background:var(--asphalte)}
-.tr.dernier .fil{background:transparent}
-.tr .corps{padding:4px 8px 14px;border-radius:6px;display:flex;flex-direction:column;gap:6px;cursor:pointer;margin-bottom:4px}
+/* L'escalier : des cartes arrondies, les marches en pastilles */
+.tr{display:block;position:relative}
+.tr .rail{position:absolute;left:14px;top:19px;pointer-events:none}
+.tr .point{display:block;width:10px;height:10px;border-radius:5px}
+.tr .fil{display:none}
+.tr .corps{background:var(--carte);border-radius:16px;padding:12px 14px 12px 34px;display:flex;flex-direction:column;gap:6px;cursor:pointer}
 .tr.on .corps{box-shadow:inset 0 0 0 2px var(--rc)}
-.tr .tete-tr{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
-.tr .prix{font:700 26px/1 "Barlow Semi Condensed",sans-serif;font-variant-numeric:tabular-nums}
-.tr .duree{font:600 20px/1 "Barlow Semi Condensed",sans-serif;font-variant-numeric:tabular-nums;color:var(--mut)}
-.tr .role{margin-left:auto;font-size:12px;color:var(--mut);text-transform:uppercase;letter-spacing:.06em}
+.tr .tete-tr{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.tr .prix{font:700 24px/1 "Barlow Semi Condensed",sans-serif;font-variant-numeric:tabular-nums}
+.tr .duree{font:600 18px/1 "Barlow Semi Condensed",sans-serif;font-variant-numeric:tabular-nums;color:var(--mut)}
+.tr .role{margin-left:auto;font-size:12px;color:var(--mut)}
 .tr .refs{display:flex;flex-wrap:wrap;gap:4px;align-items:center}
 .tr .via{font-size:13px;color:var(--mut);margin-left:4px}
-.c{font:700 12px "Barlow Semi Condensed",sans-serif;padding:1px 6px;border-radius:3px;background:var(--rouge);color:#fff;white-space:nowrap}
-.c.cD{background:var(--jaune);color:#14181f}
+.c{font:700 11px Inter,sans-serif;padding:2px 6px;border-radius:6px;background:var(--rouge);color:#fff;white-space:nowrap}
+.c.cD{background:var(--jaune);color:#111827}
 .tr .note{margin:0;font-size:13px;color:var(--mut)}
 .tr .act{display:none;gap:8px;flex-wrap:wrap;align-items:center}
 .tr.on .act,.tr.choisi .act{display:flex}
-.tr .act .maps{min-height:40px;padding:0 14px;display:inline-flex;align-items:center;border-radius:5px;background:var(--bleu);color:#fff;text-decoration:none;font:600 15px "Barlow Semi Condensed",sans-serif}
+.tr .act .maps{min-height:42px;padding:0 16px;flex-grow:1;display:inline-flex;align-items:center;justify-content:center;border-radius:12px;background:var(--bleu);color:#fff;text-decoration:none;font-weight:600;font-size:15px}
 .tr .dt{flex-basis:100%}
 .tr .dt>summary{min-height:40px;display:inline-flex;align-items:center;cursor:pointer;font-size:14px;color:var(--mut)}
 .tr .dt p{margin:4px 0;font-size:14px;color:var(--mut)}.tr .dt p b{color:var(--ink)}
-.tr .dt .gpx{min-height:40px;padding:0 12px;border:1.5px solid var(--champ);border-radius:5px;background:var(--surf);color:var(--ink);font:600 14px "Barlow Semi Condensed",sans-serif;cursor:pointer}
-/* Le trajet choisi : une plaque bleue */
-.tr.choisi .corps{background:var(--bleu);color:#fff}
-.tr.choisi .duree,.tr.choisi .role,.tr.choisi .via,.tr.choisi .note,.tr.choisi .dt>summary,.tr.choisi .dt p{color:#fff}
-.tr.choisi .dt p b{color:#fff}
+.tr .dt .gpx{min-height:40px;padding:0 14px;border:0;border-radius:12px;background:var(--champ);color:var(--ink);font:600 14px Inter,sans-serif;cursor:pointer}
+/* Le trajet choisi : une carte bleue */
+.tr.choisi .corps{background:var(--bleu);color:#fff;box-shadow:0 6px 18px rgb(28 63 148/.35)}
+.tr.choisi .point{box-shadow:0 0 0 2px #fff}
+.tr.choisi .duree,.tr.choisi .role,.tr.choisi .via,.tr.choisi .note,.tr.choisi .dt>summary,.tr.choisi .dt p,.tr.choisi .dt p b{color:#fff}
+.tr.choisi .duree,.tr.choisi .via,.tr.choisi .note{opacity:.88}
+.tr.choisi .role{font-weight:600}
 .tr.choisi .c{background:#fff;color:var(--bleu)}
 .tr.choisi .act .maps{background:#fff;color:var(--bleu)}
-.tr.choisi .dt .gpx{background:transparent;color:#fff;border-color:#fff}
-.tr.choisi.on .corps{box-shadow:inset 0 0 0 2px #fff,0 0 0 2px var(--rc)}
+.tr.choisi .dt .gpx{background:rgb(255 255 255/.16);color:#fff}
+.tr.choisi.on .corps{box-shadow:inset 0 0 0 2px #fff,0 6px 18px rgb(28 63 148/.35)}
 /* Variante intermédiaire : en retrait, cadre en pointillés */
-.tr.variante{margin-left:24px}
-.tr.variante .corps{border:1.5px dashed var(--champ)}
-.tr.variante .fil{background:transparent}
+.tr.variante{margin-left:20px}
+.tr.variante .corps{background:transparent;border:1.5px dashed var(--pointille)}
 .tr[hidden]{display:none}
-/* Marche entre deux trajets */
-.marche{display:grid;grid-template-columns:28px minmax(0,1fr);column-gap:12px}
-.marche .fil-seul{display:flex;justify-content:center}.marche .fil-seul span{width:6px;background:var(--asphalte)}
-.marche .ecart{padding:0 0 10px;font:600 15px "Barlow Semi Condensed",sans-serif;font-variant-numeric:tabular-nums;color:var(--ok)}
-.marche.m .ecart{color:var(--attention)}.marche.n .ecart{color:var(--mut)}
-.marche .ecart span{font:500 13px Barlow,sans-serif;color:var(--mut);margin-left:4px}
-/* Ligne des variantes, en fin d'escalier */
-.plus{border-top:1px solid var(--line);margin-top:4px}
-.plus button{min-height:44px;border:0;background:transparent;padding:0;font:500 15px Barlow,sans-serif;color:var(--ink);display:flex;align-items:center;gap:8px;cursor:pointer}
+/* Marche entre deux trajets : une pastille */
+.marche{display:flex;justify-content:center}
+.marche .fil-seul{display:none}
+.marche .ecart{font-size:13px;font-weight:600;font-variant-numeric:tabular-nums;color:var(--vert);background:var(--vert-pale);border-radius:12px;padding:4px 12px}
+.marche.m .ecart{color:var(--orange);background:var(--orange-pale)}
+.marche.n .ecart{color:var(--mut);background:var(--champ)}
+.marche .ecart span{font-weight:400;opacity:.8;margin-left:6px}
+/* Variantes intermédiaires : un bouton en fin d'escalier */
+.plus button{width:100%;min-height:44px;border:0;border-radius:14px;background:var(--champ);padding:0 14px;font:500 14px Inter,sans-serif;color:var(--ink);display:flex;align-items:center;justify-content:center;gap:8px;cursor:pointer}
 .plus button[aria-expanded=true] .pic{transform:rotate(180deg)}
 
 /* Comment c'est calculé : sur la page, dépliable */
-.calcul{margin:24px 16px 0;border-top:1px solid var(--line);padding-top:4px}
-.calcul summary{min-height:44px;display:flex;align-items:center;gap:8px;cursor:pointer;list-style:none;color:var(--ink);font-size:14px}
+.calcul{margin:20px 0 0;border-top:1px solid var(--line);padding-top:4px}
+.calcul summary{min-height:44px;display:flex;align-items:center;gap:8px;cursor:pointer;list-style:none;color:var(--bleu-txt);font-weight:600;font-size:14px}
 .calcul summary::-webkit-details-marker{display:none}
-.calcul dl{display:grid;grid-template-columns:96px minmax(0,1fr);gap:8px 12px;margin:4px 0 10px;font-size:14px;line-height:1.4}
-.calcul dt{font:600 13px Barlow,sans-serif;text-transform:uppercase;letter-spacing:.06em}
+.calcul dl{display:grid;grid-template-columns:96px minmax(0,1fr);gap:8px 12px;margin:4px 0 10px;font-size:14px;line-height:1.45}
+.calcul dt{font-weight:600;font-size:13px}
 .calcul dd{margin:0;color:var(--mut)}
 .sources{font-size:12px;color:var(--mut);margin:0}
-.pied{margin:16px 16px 0;font-size:12px;color:var(--mut)}.pied a{color:inherit}
+.pied{margin:12px 0 0;font-size:12px;color:var(--mut)}.pied a{color:inherit}
 
 /* Carte Leaflet */
-#carte{background:var(--line);font:14px Barlow,sans-serif}
-.leaflet-container a{color:var(--bleu)}
-.etiquette{font:600 14px "Barlow Semi Condensed",sans-serif;padding:2px 8px;border-radius:4px;box-shadow:0 1px 4px rgb(0 0 0/.3)}
-.leaflet-bar a{width:36px;height:36px;line-height:36px}
-.leaflet-touch .leaflet-bar a{width:40px;height:40px;line-height:40px}
+#carte{background:var(--line);font:14px Inter,sans-serif}
+.leaflet-container a{color:var(--bleu-txt)}
+.etiquette{font:600 13px Inter,sans-serif;padding:3px 8px;border-radius:8px;border:0;box-shadow:0 2px 8px rgb(0 0 0/.25)}
+.leaflet-bar{border:0!important;border-radius:12px!important;overflow:hidden;box-shadow:var(--ombre-pt)!important}
+.leaflet-bar a{width:40px;height:40px;line-height:40px}
+.leaflet-touch .leaflet-bar a{width:44px;height:44px;line-height:44px}
+.leaflet-control-attribution{border-radius:8px 0 0 0}
 .touche{cursor:pointer}
 @media (prefers-color-scheme: dark){:root:not([data-theme=light]) .leaflet-tile-pane{filter:invert(1) hue-rotate(180deg) brightness(.9) contrast(.9)}}
 :root[data-theme=dark] .leaflet-tile-pane{filter:invert(1) hue-rotate(180deg) brightness(.9) contrast(.9)}
@@ -214,7 +262,7 @@ legend,.calcul summary,.lim .etiq{font:600 13px Barlow,sans-serif;text-transform
 /* Montagne de billets (trouvaille de l'exploration) : des billets dessinés, pas d'émoji */
 .fete{position:fixed;inset:0;pointer-events:none;z-index:2000;overflow:hidden;transition:opacity .6s}
 .fete.fin{opacity:0}
-.fete span{position:absolute;left:50%;bottom:12vh;width:30px;height:16px;border-radius:2px;background:#2f8f4e;border:1.5px solid #1d5e32;color:#e8f5ec;font:700 11px/13px "Barlow Semi Condensed",sans-serif;text-align:center;transform:translate(calc(var(--x) - 50%),-110vh) rotate(var(--r));animation:tombe .8s cubic-bezier(.25,.7,.35,1.15) var(--d) forwards}
+.fete span{position:absolute;left:50%;bottom:12vh;width:30px;height:16px;border-radius:3px;background:#2f8f4e;border:1.5px solid #1d5e32;color:#e8f5ec;font:700 11px/13px "Barlow Semi Condensed",sans-serif;text-align:center;transform:translate(calc(var(--x) - 50%),-110vh) rotate(var(--r));animation:tombe .8s cubic-bezier(.25,.7,.35,1.15) var(--d) forwards}
 .fete b{position:absolute;left:50%;bottom:calc(12vh + 150px);transform:translateX(-50%) scale(0);font:700 34px "Barlow Semi Condensed",sans-serif;color:var(--jaune);text-shadow:0 2px 6px rgb(0 0 0/.5);animation:kaching .5s 1.7s cubic-bezier(.3,1.6,.5,1) forwards}
 @keyframes tombe{to{transform:translate(calc(var(--x) - 50%),var(--y)) rotate(var(--r2))}}
 @keyframes kaching{to{transform:translateX(-50%) scale(1)}}

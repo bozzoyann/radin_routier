@@ -5,28 +5,30 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Radin routier</title>
 <link rel="manifest" href="manifest.webmanifest">
-<meta name="theme-color" content="#1f4fa3">
+<meta name="theme-color" content="#1c3f94">
 <link rel="icon" href="icones/icone.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="icones/apple-touch-icon.png">
 <meta name="apple-mobile-web-app-title" content="Radin routier">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Semi+Condensed:wght@500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Barlow+Semi+Condensed:wght@600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="vendor/leaflet/leaflet.css">
 <link rel="stylesheet" href="styles.css">
 </head>
 <body>
+<main>
+<div class="haut">
 <header class="tete">
-<span class="cartouche">RADIN ROUTIER</span>
+<span class="marque"><img src="icones/icone.svg" alt="" width="28" height="28">Radin routier</span>
 <button type="button" class="installer" id="installer" hidden>Installer l'appli</button>
 <span class="ver" id="ver" title="Version de l'appli chargée par ton navigateur"></span>
 </header>
-<main>
 <form id="f">
 <!-- Après la recherche : départ et arrivée repliés en plaque, avec un crayon pour les modifier -->
 <div class="plaque" id="plaque">
 <div class="plaque-noms"><span id="pDep"></span><span id="pArr"></span></div>
 <button type="button" class="icone" id="edit" aria-label="Modifier le trajet"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16v4z"/></svg></button>
+<button type="button" class="icone" id="reglbtn" aria-label="Réglages" aria-controls="regl" aria-expanded="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg></button>
 </div>
 <div class="od" id="od">
 <div class="ac"><label for="from">Départ</label><input id="from" placeholder="ex. : Toulouse" autocomplete="off" required role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="from-l"><ul class="sugg" id="from-l" role="listbox" hidden></ul></div>
@@ -86,13 +88,14 @@
 </form>
 <p id="st" role="status"></p>
 <div class="lim" id="lim" role="group" aria-label="Temps en plus accepté" hidden>
-<span class="etiq">Temps en plus accepté</span>
 <div class="reglette">
-<button type="button" data-l="0">0</button><button type="button" data-l="15">15</button><button type="button" data-l="30">30</button><button type="button" data-l="60">1 h</button><button type="button" data-l="120">2 h</button><button type="button" data-l="inf" aria-label="Peu importe">∞</button>
+<span class="etiq">Temps en plus</span>
+<button type="button" data-l="0">0 min</button><button type="button" data-l="15">15 min</button><button type="button" data-l="30">30 min</button><button type="button" data-l="60">1 h</button><button type="button" data-l="120">2 h</button><button type="button" data-l="inf" aria-label="Peu importe">∞</button>
 </div>
 </div>
+</div>
+<div class="feuille">
 <section id="res" hidden>
-<div class="fig"><div id="carte" role="region" aria-label="Carte des itinéraires"></div></div>
 <ul id="list"></ul>
 </section>
 <details class="calcul">
@@ -107,7 +110,9 @@
 <p class="sources">Itinéraires <a href="https://valhalla.github.io/valhalla/">Valhalla</a> (serveur FOSSGIS) · adresses <a href="https://photon.komoot.io">Photon</a> · carte <a href="https://leafletjs.com">Leaflet</a> · données © contributeurs <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> · prix des carburants : ministère de l'Économie (Licence Ouverte) · tarifs VINCI Autoroutes publiés par la société ; tarifs APRR et AREA (<a href="https://www.data.gouv.fr/datasets/tarifs-autoroutes-aprr">Licence Ouverte</a>) et gares de péage (<a href="https://www.data.gouv.fr/datasets/gares-de-peage-du-reseau-routier-national-concede">ODC-BY</a>) : data.gouv.fr · villes : Insee (<a href="https://www.etalab.gouv.fr/licence-ouverte-open-licence/">Licence Ouverte</a>) et <a href="https://www.geonames.org/">GeoNames</a> (<a href="https://creativecommons.org/licenses/by/4.0/deed.fr">CC-BY 4.0</a>).</p>
 </details>
 <footer class="pied">Itinéraires Valhalla · adresses Photon · © contributeurs <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a></footer>
+</div>
 </main>
+<div class="fig" id="fond" hidden><div id="carte" role="region" aria-label="Carte des itinéraires"></div></div>
 <script src="vendor/leaflet/leaflet.js"></script>
 <script type="module" src="app.js"></script>
 </body>

@@ -13,7 +13,7 @@ const RAPIDE = { auto: { use_tolls: 1, use_highways: 1 } };
 const LIBRE = { auto: { use_tolls: 0, use_highways: 0 } };
 
 /** Version affichée en haut de la page : à augmenter à chaque modification publiée. */
-export const VERSION = '1.16.0';
+export const VERSION = '1.17.0';
 export const VERSION_DATE = '25/11/2026';
 
 const $ = id => document.getElementById(id);
@@ -186,7 +186,7 @@ ${r.mixte ? `<p>${esc(r.mixte.texte)}</p>` : ''}<p><span class="nw">carburant ${
   const nDom = autres.length;
   if (nDom) html += `<li class="plus"><button type="button" id="vdom" aria-expanded="${voirDomines}">${PIC('M6 9l6 6 6-6')}${voirDomines ? 'Masquer' : 'Voir'} ${nDom > 1 ? `les ${nDom} variantes intermédiaires` : 'la variante intermédiaire'}</button></li>`;
 
-  // Synthèse : panneau bleu. Ton choix, au-delà, avancement et exploration, compteur.
+  // Synthèse : en tête du panneau. Ton choix, au-delà, avancement et exploration, compteur.
   const rapide = utiles[0];
   const neufs = utiles.filter(x => x.r.explore);
   derniersNeufs = neufs.length;
@@ -201,6 +201,7 @@ ${r.mixte ? `<p>${esc(r.mixte.texte)}</p>` : ''}<p><span class="nw">carburant ${
   synth += best === rapide
     ? `<div class="ecart">${isFinite(limite) && limite ? `Rien à gagner en ${fmtT(limite)} de plus` : 'Aucun détour ne fait gagner d\'argent'}</div>`
     : `<div class="ecart">−${fmtE(rapide.c.eur - best.c.eur)} pour +${fmtT(best.r.min - t0)} <span>vs le plus rapide</span></div>`;
+  synth += `<div class="actions"><a class="maps" href="${gmaps(best.r)}" target="_blank" rel="noopener">Ouvrir dans Maps</a></div>`;
   if (sugg) synth += `<div class="sep"></div><div class="ligne"><span class="tag">Au-delà</span><button type="button" class="sel droite cond" data-sel="${sugg.i}">Trajet ${num.get(sugg.i)} · −${fmtE(best.c.eur - sugg.c.eur)} pour +${fmtT(sugg.r.min - best.r.min)}</button></div>`;
   synth += blocAvancement(neufs.length);
   synth += `<span class="compte">${routes.length} trajets comparés${plusChers.length ? ` · ${plusChers.length} sans intérêt, en pointillés sur la carte` : ''}</span>`;
@@ -215,7 +216,8 @@ let carte = null, calque = null, cadrage = '';
 const TUILES = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';   // conditions : attribution visible, usage modéré
 
 function creerCarte() {
-  carte = L.map('carte', { scrollWheelZoom: false, zoomSnap: 0.25 });
+  carte = L.map('carte', { scrollWheelZoom: false, zoomSnap: 0.25, zoomControl: false });
+  L.control.zoom({ position: 'topright' }).addTo(carte);
   L.tileLayer(TUILES, { maxZoom: 18, attribution: '© <a href="https://www.openstreetmap.org/copyright">contributeurs OpenStreetMap</a>' }).addTo(carte);
   calque = L.layerGroup().addTo(carte);
   carte.on('click', () => { if (hot !== -1) { hot = -1; render(); } });   // toucher le fond désélectionne
@@ -250,7 +252,15 @@ function draw() {
   // On recadre quand de nouveaux trajets élargissent la zone, pas à chaque sélection (pour garder ton zoom).
   const tous = L.latLngBounds(routes.flatMap(r => [r.pts[0], r.pts.at(-1), ...allege(r.pts).filter((_, j) => j % 20 === 0)]));
   const cle = tous.toBBoxString();
-  if (cle !== cadrage) { cadrage = cle; carte.fitBounds(tous, { padding: [24, 24] }); }
+  if (cle !== cadrage) { cadrage = cle; carte.fitBounds(tous, marges()); }
+}
+
+// Marges du cadrage : la carte est sous la barre de recherche et le panneau des trajets.
+function marges() {
+  const large = matchMedia('(min-width: 720px)').matches;
+  if (large) return { paddingTopLeft: [$('f').closest('main').getBoundingClientRect().right + 24, 24], paddingBottomRight: [24, 24] };
+  const h = $('carte').clientHeight, bas = $('lim').getBoundingClientRect().bottom + scrollY;
+  return { paddingTopLeft: [16, Math.min(Math.max(16, bas + 8), h * 0.5)], paddingBottomRight: [16, 40] };
 }
 
 function choisirSurCarte(i) {
@@ -363,13 +373,14 @@ async function run(e) {
         if (!st.classList.contains('err')) st.textContent = '';   // l'avancement passe dans la synthèse
         // Affichage au fil de l'eau : la liste se remplit dès la première réponse.
         routes = dedupe(found).sort((x, y) => x.min - y.min);
-        $('res').hidden = false; $('lim').hidden = false;
+        $('res').hidden = false; $('lim').hidden = false; $('fond').hidden = false;
+        document.body.classList.add('resultats');
         $('pDep').textContent = a.name; $('pArr').textContent = b.name; $('f').classList.add('replie'); $('regl').open = false;
         render();
-        // Aux premiers trajets, on fait défiler jusqu'à la carte (avec la progression juste au-dessus).
+        // Aux premiers trajets, on remonte en haut : la carte plein écran et la synthèse en haut du panneau.
         if (!defile) {
           defile = true;
-          $('st').scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' });
+          scrollTo({ top: 0, behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
         }
       } catch (err) { fails++; }
       if (p < PROFILES.length - 1) await sleep(DELAI_VALHALLA);
@@ -626,4 +637,6 @@ addEventListener('appinstalled', () => { $('installer').hidden = true; });
 
 // Plaque départ / arrivée : le crayon rouvre la saisie ; « Calculer » ouvre l'assistant usure.
 $('edit').addEventListener('click', () => { $('f').classList.remove('replie'); $('from').focus(); });
+$('reglbtn').addEventListener('click', () => { $('regl').open = !$('regl').open; });
+$('regl').addEventListener('toggle', () => $('reglbtn').setAttribute('aria-expanded', String($('regl').open)));
 $('wizbtn').addEventListener('click', () => { $('wiz').open = true; $('wiz').scrollIntoView({ behavior: 'smooth', block: 'start' }); });

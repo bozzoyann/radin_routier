@@ -12,7 +12,7 @@ const RAPIDE = { auto: { use_tolls: 1, use_highways: 1 } };
 const LIBRE = { auto: { use_tolls: 0, use_highways: 0 } };
 
 /** Version affichée en haut de la page : à augmenter à chaque modification publiée. */
-export const VERSION = '1.10.1';
+export const VERSION = '1.11.0';
 export const VERSION_DATE = '25/11/2026';
 
 const $ = id => document.getElementById(id);
@@ -95,7 +95,9 @@ function render() {
   const tousAutres = rows.filter(x => x.dom).sort((a, b) => a.r.min - b.r.min);
   // Plus cher que le plus rapide : on y perd du temps ET de l'argent. Masqués (liste et carte), seulement comptés.
   const prixRapide = utiles[0].c.eur;
-  const autres = tousAutres.filter(x => x.c.eur < prixRapide), plusChers = tousAutres.filter(x => x.c.eur >= prixRapide);
+  // Sans intérêt (plus cher que le plus rapide, ou plus lent ET plus cher qu'un autre) : masqués, en pointillés sur la carte.
+  // Seuls restent dans le pli les trajets écartés de peu (marche de moins de 12 %), utiles à analyser.
+  const plusChers = tousAutres.filter(x => x.c.eur >= prixRapide || x.domine), autres = tousAutres.filter(x => !plusChers.includes(x));
   masques = new Set(plusChers.map(x => x.i));
   // Ton choix : le moins cher dans ta limite de temps ; à considérer : un peu au-delà (voir cost.js choixLimite).
   const cl = choixLimite(utiles.map(x => ({ min: x.r.min, eur: x.c.eur })), limite);
@@ -114,7 +116,8 @@ function render() {
     } else if (estDomine) {
       // Marche trop petite : on la compare au trajet de l'escalier juste plus rapide.
       const ref = [...utiles].reverse().find(u => u.r.min <= r.min);
-      note = `<p class="note">Seulement ${fmtE(ref.c.eur - c.eur)} de moins que le trajet ${num.get(ref.i)}, pour ${fmtT(r.min - ref.r.min)} de plus.</p>`;
+      const de = ref.c.eur - c.eur;
+      note = `<p class="note">${de < 0.5 ? 'À peine moins cher' : `Seulement ${fmtE(de)} de moins`} que le trajet ${num.get(ref.i)}, pour ${fmtT(r.min - ref.r.min)} de plus.</p>`;
     }
     if (!r.villes) r.villes = villesTraversees(r.pts);   // calculé une fois par trajet
     const via = r.villes.length ? `<span class="via">par ${r.villes.map(esc).join(' · ')}</span>` : '';
@@ -155,7 +158,7 @@ ${r.mixte ? `<p class="mx">🔀 ${esc(r.mixte.texte)}</p>` : ''}<p><span class="
   utiles.forEach((x, k) => { if (k) html += pas(utiles[k - 1], x); html += carte(x); });
   const nDom = autres.length;
   if (nDom) {
-    html += `<li class="more"><button type="button" id="vdom" aria-expanded="${voirDomines}">${voirDomines ? 'Masquer' : 'Voir'} ${nDom > 1 ? `les ${nDom} trajets écartés` : 'le trajet écarté'} <small>(moins cher${nDom > 1 ? 's' : ''} que le plus rapide, mais pas retenu${nDom > 1 ? 's' : ''})</small></button></li>`;
+    html += `<li class="more"><button type="button" id="vdom" aria-expanded="${voirDomines}">${voirDomines ? 'Masquer' : 'Voir'} ${nDom > 1 ? `les ${nDom} trajets écartés de peu` : 'le trajet écarté de peu'} <small>(un peu moins cher${nDom > 1 ? 's' : ''}, mais pas assez pour le temps en plus)</small></button></li>`;
     html += autres.map(carte).join('');
   }
   // Bandeau : temps perdu, puis argent gagné, puis le trajet concerné (touchable pour le sélectionner).
@@ -173,7 +176,7 @@ ${r.mixte ? `<p class="mx">🔀 ${esc(r.mixte.texte)}</p>` : ''}<p><span class="
     bandeau = `<p class="trouve">🆕 <b>L'exploration a déniché ${neufs.length > 1 ? `${neufs.length} trajets` : 'un trajet'} que personne ne voyait !</b>${role}</p>${lien(top)}` + bandeau;
     if (neufs.length > dejaFete) { dejaFete = neufs.length; pluieDeBillets(); }
   }
-  $('list').innerHTML = `<li class="choix${neufs.length ? ' bravo' : ''}">${bandeau}<p class="nb">${routes.length} trajets comparés : ${utiles.length} dans l'escalier, ${autres.length} écarté${autres.length > 1 ? 's' : ''}${plusChers.length ? `, ${plusChers.length} plus cher${plusChers.length > 1 ? 's' : ''} que le plus rapide (masqué${plusChers.length > 1 ? 's' : ''})` : ''}.</p></li>` + blocExploration(neufs.length) + html;
+  $('list').innerHTML = `<li class="choix${neufs.length ? ' bravo' : ''}">${bandeau}<p class="nb">${routes.length} trajets comparés : ${utiles.length} dans l'escalier, ${autres.length} écarté${autres.length > 1 ? 's' : ''}${plusChers.length ? `, ${plusChers.length} sans intérêt (en pointillés sur la carte)` : ''}.</p></li>` + blocExploration(neufs.length) + html;
   draw();
 }
 

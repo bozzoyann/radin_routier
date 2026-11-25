@@ -256,3 +256,15 @@ test('auDessusLigne : variante moins bonne que ses deux voisins', () => {
   assert.equal(auDessusLigne(p, n, { min: 278, eur: 113 }), false);   // sous la ligne : vraie variante
   assert.equal(auDessusLigne(p, null, { min: 300, eur: 100 }), false); // pas de voisin suivant
 });
+
+import { promu } from '../cost.js';
+
+test('promu : la variante moins chère dans la limite monte dans l\'escalier', () => {
+  const esc = [{ min: 264, eur: 121 }, { min: 354, eur: 104 }];   // +1 h 30 pour −17 €
+  const autres = [{ min: 283, eur: 114 }];                         // +19 min pour −7 € : une variante
+  assert.equal(promu(esc, autres, 60), 0);          // 1 h acceptée : elle devient ton choix
+  assert.equal(promu(esc, autres, 15), -1);         // 15 min : hors limite, elle reste variante
+  assert.equal(promu(esc, autres, Infinity), -1);   // peu importe : le moins cher de l'escalier gagne déjà
+  assert.equal(promu(esc, [{ min: 270, eur: 118 }, { min: 290, eur: 112 }], 60), 1);   // la moins chère des deux
+  assert.equal(promu([], autres, 60), -1);
+});

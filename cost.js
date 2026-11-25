@@ -239,6 +239,20 @@ export function choixLimite(items, limite) {
 }
 
 /**
+ * La variante à faire monter dans l'escalier pour ta limite de temps : la moins chère des variantes
+ * qui tiennent dans la limite, si elle est moins chère que le choix pris dans l'escalier. -1 sinon.
+ * `esc` : l'escalier ([{min, eur}]), du plus rapide au moins cher ; `autres` : les variantes gardées.
+ * Ainsi « j'accepte 1 h de plus » prend tout ce qui fait gagner de l'argent dans l'heure, même peu.
+ */
+export function promu(esc, autres, limite) {
+  if (!esc.length) return -1;
+  const t0 = esc[0].min, ref = esc[choixLimite(esc, limite).choix];
+  let k = -1;
+  autres.forEach((x, i) => { if (x.min - t0 <= limite && x.eur < (k >= 0 ? autres[k].eur : ref.eur)) k = i; });
+  return k;
+}
+
+/**
  * Vrai si `x` ({min, eur}) est au-dessus de la ligne droite qui relie `p` et `n` dans le plan temps → prix :
  * il est alors moins bon que l'un ou l'autre, quelle que soit la valeur donnée au temps.
  */

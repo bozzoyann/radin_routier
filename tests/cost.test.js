@@ -170,3 +170,18 @@ test('escalier : une suite de petites marches ne fait pas tout disparaître', ()
   const t = [100, 95, 90, 85, 80, 75, 70].map((eur, k) => ({ min: 100 + 10 * k, eur }));
   assert.deepEqual(escalier(t), [0, 3, 6]);
 });
+
+import { valeurTempsAuto, meilleurChoix } from '../cost.js';
+
+test('valeurTempsAuto : le prix à l\'heure du trajet le plus rapide', () => {
+  near(valeurTempsAuto({ min: 240, eur: 120 }), 30);   // 120 € en 4 h
+  near(valeurTempsAuto({ min: 0, eur: 10 }), DEF.vh);   // durée nulle : valeur par défaut
+});
+
+test('meilleurChoix : l\'optimum peut tomber au milieu', () => {
+  const t = [{ min: 230, eur: 115 }, { min: 238, eur: 91 }, { min: 302, eur: 75 }, { min: 319, eur: 64 }];
+  const auto = valeurTempsAuto(t[0]);                  // 115 € / 3 h 50 = 30 €/h
+  assert.equal(meilleurChoix(t, auto), 1);             // 91 + 119 = 210, le plus bas
+  assert.equal(meilleurChoix(t, 5), 3);                // temps presque gratuit : le moins cher
+  assert.equal(meilleurChoix(t, 1000), 0);             // temps hors de prix : le plus rapide
+});

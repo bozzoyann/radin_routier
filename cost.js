@@ -176,3 +176,19 @@ export function escalier(items, seuil = MARCHE_MIN) {
   }
   return out;
 }
+
+/**
+ * Valeur du temps « automatique », en €/h : ce que coûte le trajet le plus rapide par heure de route.
+ * Un détour doit donc faire économiser en proportion du trajet : sur un trajet de 4 h à 120 € (30 €/h),
+ * 1 h de plus doit rapporter au moins 30 €. `rapide` : {min, eur}.
+ */
+export function valeurTempsAuto(rapide) {
+  return rapide.min > 0 ? rapide.eur / (rapide.min / 60) : DEF.vh;
+}
+
+/** Le trajet au meilleur total « euros + temps × valeur du temps (€/h) ». `items` : [{min, eur}] ; renvoie l'indice. */
+export function meilleurChoix(items, vh) {
+  let best = -1, score = Infinity;
+  items.forEach((x, i) => { const v = x.eur + x.min / 60 * vh; if (v < score) { score = v; best = i; } });
+  return best;
+}

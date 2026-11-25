@@ -1,5 +1,5 @@
 // Interface : saisie, réglages, liste des trajets, carte schématique, exports.
-import { DEF, USURE_DEF, usureParKm, analyse, dedupe, cost, along, domines, marche, escalier } from './cost.js';
+import { DEF, USURE_DEF, usureParKm, analyse, dedupe, cost, along, domines, marche, escalier, valeurTempsAuto, meilleurChoix } from './cost.js';
 import { PROFILES, DELAI_VALHALLA, geocode, route, suggest } from './routing.js';
 import { candidats, reglagesMixte, joindre } from './mixtes.js';
 import { villesTraversees } from './villes.js';
@@ -9,7 +9,7 @@ const RAPIDE = { auto: { use_tolls: 1, use_highways: 1 } };
 const LIBRE = { auto: { use_tolls: 0, use_highways: 0 } };
 
 /** Version affichée en haut de la page : à augmenter à chaque modification publiée. */
-export const VERSION = '1.3.1';
+export const VERSION = '1.4.0';
 export const VERSION_DATE = '25/11/2026';
 
 const $ = id => document.getElementById(id);
@@ -25,6 +25,7 @@ let profils = null;            // {list: [{id, nom, carbu, usure, cville, croute
 let choix = { from: null, to: null };   // lieux choisis dans les suggestions
 const suggTimer = {};                   // délais de frappe en cours, par champ
 let routes = [], ends = null, hot = -1, voirDomines = false;
+let vhCourante = null;   // valeur du temps (€/h) utilisée au dernier affichage
 
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const store = {
@@ -46,9 +47,10 @@ function save() {
   p.carbu = $('carbu').value;
   prices[p.carbu] = s.prix;
   store.set(PKEY, profils);
-  store.set(CKEY, { peage: s.peage, vh: s.vh, prices });
+  store.set(CKEY, { peage: s.peage, vh: s.vh, vhAuto: $('vhauto').checked, prices });
+  $('vh').disabled = $('vhauto').checked; $('vhman').classList.toggle('off', $('vhauto').checked);
   const fr = n => String(n).replace('.', ',');
-  $('sum').textContent = `${p.nom} · ${fr(s.prix)} €/L · ${fr(Math.round(s.usure * 1000) / 10)} c€/km · ${s.vh} €/h`;
+  $('sum').textContent = `${p.nom} · ${fr(s.prix)} €/L · ${fr(Math.round(s.usure * 1000) / 10)} c€/km · ${$('vhauto').checked ? (vhCourante ? `temps auto ≈ ${Math.round(vhCourante)} €/h` : 'temps auto') : `${s.vh} €/h`}`;
 }
 
 function gmaps(r) {
@@ -78,10 +80,13 @@ const VERDICT = {
 };
 
 function render() {
-  save();
-  if (!routes.length) return;
+  if (!routes.length) { vhCourante = null; save(); return; }
   const s = settings();
   const rows = routes.map((r, i) => ({ r, i, c: cost(r, s) }));
+  // Valeur du temps : automatique (prix à l'heure du trajet le plus rapide) ou fixée par l'utilisateur.
+  const rapide = rows.reduce((a, b) => b.r.min < a.r.min ? b : a);
+  const vh = $('vhauto').checked ? valeurTempsAuto({ min: rapide.r.min, eur: rapide.c.eur }) : s.vh;
+  vhCourante = vh; save();
   const items = rows.map(x => ({ min: x.r.min, eur: x.c.eur }));
   const dom = domines(items), garde = new Set(escalier(items));
   rows.forEach((x, j) => { x.domine = dom.has(j); x.dom = !garde.has(j); });   // x.dom : replié sous « autres trajets »
@@ -89,7 +94,7 @@ function render() {
   // L'escalier : du plus rapide au moins cher, chaque marche faisant gagner au moins 12 % (voir cost.js escalier).
   const utiles = rows.filter(x => !x.dom).sort((a, b) => a.r.min - b.r.min);
   const autres = rows.filter(x => x.dom).sort((a, b) => a.r.min - b.r.min);
-  const best = utiles.reduce((a, b) => b.c.mix < a.c.mix ? b : a);
+  const best = utiles[meilleurChoix(utiles.map(x => ({ min: x.r.min, eur: x.c.eur })), vh)];
   const ordre = [...utiles, ...autres];
   const num = new Map(ordre.map((x, k) => [x.i, k + 1]));
 
@@ -122,7 +127,7 @@ ${r.mixte ? `<p class="mx">🔀 ${esc(r.mixte.texte)}</p>` : ''}<p><span class="
 
   // Une marche entre deux trajets successifs de l'escalier.
   const pas = (haut, bas) => {
-    const m = marche({ min: haut.r.min, eur: haut.c.eur }, { min: bas.r.min, eur: bas.c.eur }, s.vh);
+    const m = marche({ min: haut.r.min, eur: haut.c.eur }, { min: bas.r.min, eur: bas.c.eur }, vh);
     const [cls, ico, mot] = VERDICT[m.verdict];
     const temps = m.dt > 0.5 ? `+${fmtT(m.dt)}` : 'même durée';
     const taux = isFinite(m.parMin) ? `${fmtEur(m.parMin)} par minute en plus` : 'sans perdre de temps';
@@ -137,7 +142,8 @@ ${r.mixte ? `<p class="mx">🔀 ${esc(r.mixte.texte)}</p>` : ''}<p><span class="
     html += `<li class="more"><button type="button" id="vdom" aria-expanded="${voirDomines}">${voirDomines ? 'Masquer' : 'Voir'} ${nDom > 1 ? `les ${nDom} autres trajets` : 'l\'autre trajet'} <small>(moins intéressant${nDom > 1 ? 's' : ''})</small></button></li>`;
     html += autres.map(carte).join('');
   }
-  $('list').innerHTML = html;
+  const rappel = `<li class="vhinfo">Ton temps compte pour <b>${fmtEur(vh / 60)} la minute</b> (${Math.round(vh)} €/h)${$('vhauto').checked ? ', le prix du trajet le plus rapide' : ''}.</li>`;
+  $('list').innerHTML = rappel + html;
   draw();
 }
 
@@ -237,6 +243,7 @@ function chargerReglages() {
   const crit = c || (old && old.s) || {};
   prices = (c && c.prices) || (old && old.prices) || {};
   for (const k of CRIT_KEYS) $(k).value = crit[k] != null ? crit[k] : DEF[k];
+  $('vhauto').checked = !(c && c.vhAuto === false);   // automatique par défaut
   afficherProfil();
 }
 
@@ -279,6 +286,7 @@ $('carbu').addEventListener('change', () => {
   render();
 });
 for (const k of KEYS) $(k).addEventListener('input', render);
+$('vhauto').addEventListener('change', render);
 
 // ---------- Assistant usure ----------
 const cts = v => `${(v * 100).toFixed(2).replace('.', ',')} c€`;

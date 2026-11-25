@@ -140,3 +140,7 @@ footer a{color:inherit}
   #list{margin-top:0}
   .row{scroll-margin-top:12px}
 }
+/* Valeur du temps : automatique ou fixée */
+.vhl.off{opacity:.5}
+.vhinfo{font-size:14px;color:var(--mut);margin:0 0 6px}
+.vhinfo b{color:var(--ink);font-weight:600}

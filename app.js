@@ -13,7 +13,7 @@ const RAPIDE = { auto: { use_tolls: 1, use_highways: 1 } };
 const LIBRE = { auto: { use_tolls: 0, use_highways: 0 } };
 
 /** Version affichée en haut de la page : à augmenter à chaque modification publiée. */
-export const VERSION = '1.18.1';
+export const VERSION = '1.18.2';
 export const VERSION_DATE = '25/11/2026';
 
 const $ = id => document.getElementById(id);
@@ -119,7 +119,7 @@ function render() {
   const auDessus = x => { const p = avant(x); return auDessusLigne(pt(p), pt(utiles[utiles.indexOf(p) + 1]), pt(x)); };
   const plusChers = tousAutres.filter(x => x.c.eur >= prixRapide || x.domine || derisoire(x) || doublon(x) || auDessus(x)), autres = tousAutres.filter(x => !plusChers.includes(x));
   masques = new Set(plusChers.map(x => x.i));
-  // Ton choix : le moins cher dans ta limite de temps, chaque pas rapportant au moins 2 € (et 2 % du prix) et 1 € toutes les 3 min ;
+  // Ton choix : le moins cher dans ta limite de temps, chaque pas rapportant au moins 2 € et 1 € toutes les 3 min ;
   // « au-delà » : un peu plus loin, même règle (voir cost.js choixLimite). Variantes comprises.
   const cands = [...utiles, ...autres].sort((a, b) => a.r.min - b.r.min);
   const cl = choixLimite(cands.map(pt), limite);

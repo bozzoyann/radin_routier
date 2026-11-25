@@ -184,7 +184,7 @@ test('escalier : une suite de petites marches ne fait pas tout disparaître', ()
 
 import { choixLimite, LIMITE_DEF } from '../cost.js';
 
-test('choixLimite : le moins cher dans la limite, chaque pas rapportant au moins 2 € et 2 % du prix, et 1 € toutes les 3 min', () => {
+test('choixLimite : le moins cher dans la limite, chaque pas rapportant au moins 2 € et 1 € toutes les 3 min', () => {
   assert.equal(LIMITE_DEF, 30);
   // Une variante à +19 min pour −7 € (1 € toutes les 2,7 min), puis +1 h 30 pour −17 € en tout.
   const t = [{ min: 264, eur: 121 }, { min: 283, eur: 114 }, { min: 354, eur: 104 }];
@@ -196,9 +196,9 @@ test('choixLimite : le moins cher dans la limite, chaque pas rapportant au moins
   assert.deepEqual(choixLimite([{ min: 100, eur: 100 }, { min: 160, eur: 93 }], 60).choix, 0);
   assert.deepEqual(choixLimite([{ min: 0, eur: 121 }, { min: 120, eur: 106.5 }], 120).choix, 0);
   assert.deepEqual(choixLimite([{ min: 0, eur: 100 }, { min: 2, eur: 98.5 }], 30).choix, 0);
-  // Le seuil suit le prix : 2 € en 5 min sur un trajet à 25 €, oui ; 5 € en 5 min sur 300 €, non (il faut 6 €).
+  // Le seuil ne dépend pas du prix : 2 € en 5 min sur 25 €, oui ; 5 € en 5 min sur 300 € (vacances), oui aussi.
   assert.deepEqual(choixLimite([{ min: 0, eur: 25 }, { min: 5, eur: 23 }], 30).choix, 1);
-  assert.deepEqual(choixLimite([{ min: 0, eur: 300 }, { min: 5, eur: 295 }], 30).choix, 0);
+  assert.deepEqual(choixLimite([{ min: 0, eur: 300 }, { min: 5, eur: 295 }], 30).choix, 1);
 });
 
 test('choixLimite : on avance pas à pas, et la suggestion va jusqu\'à 3 fois la limite si vrai gain (20 %)', () => {

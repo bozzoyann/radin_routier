@@ -9,7 +9,7 @@ const RAPIDE = { auto: { use_tolls: 1, use_highways: 1 } };
 const LIBRE = { auto: { use_tolls: 0, use_highways: 0 } };
 
 /** Version affichée en haut de la page : à augmenter à chaque modification publiée. */
-export const VERSION = '1.6.0';
+export const VERSION = '1.6.1';
 export const VERSION_DATE = '25/11/2026';
 
 const $ = id => document.getElementById(id);
@@ -137,12 +137,13 @@ ${r.mixte ? `<p class="mx">🔀 ${esc(r.mixte.texte)}</p>` : ''}<p><span class="
     html += `<li class="more"><button type="button" id="vdom" aria-expanded="${voirDomines}">${voirDomines ? 'Masquer' : 'Voir'} ${nDom > 1 ? `les ${nDom} autres trajets` : 'l\'autre trajet'} <small>(moins intéressant${nDom > 1 ? 's' : ''})</small></button></li>`;
     html += autres.map(carte).join('');
   }
-  // Bandeau : ce que l'appli a choisi, et pourquoi.
-  const rapide = utiles[0], lim = isFinite(limite) ? (limite ? fmtT(limite) : 'aucune minute') : '';
+  // Bandeau : temps perdu, puis argent gagné, puis le trajet concerné (touchable pour le sélectionner).
+  const rapide = utiles[0], lim = isFinite(limite) ? (limite ? fmtT(limite) : '') : '';
+  const lien = x => `<button type="button" class="vers" data-sel="${x.i}">→ Trajet ${num.get(x.i)} : ${fmtT(x.r.min)} · ${fmtE(x.c.eur)}${x.r.villes && x.r.villes.length ? `, par ${x.r.villes.map(esc).join(' · ')}` : ''}</button>`;
   let bandeau = best === rapide
-    ? `<p>⭐ <b>Le plus rapide est ton meilleur choix</b> : ${fmtT(rapide.r.min)} · ${fmtE(rapide.c.eur)}. ${limite ? `Aucun trajet ne fait économiser en ${lim} de plus.` : ''}</p>`
-    : `<p>⭐ <b>Ton choix : ${fmtT(best.r.min)} · ${fmtE(best.c.eur)}</b>, soit ${fmtE(rapide.c.eur - best.c.eur)} de moins que le plus rapide, pour ${fmtT(best.r.min - t0)} de plus.</p>`;
-  if (sugg) bandeau += `<p>💡 <b>À considérer</b> : en acceptant ${fmtT(sugg.r.min - best.r.min)} de plus, ${fmtT(sugg.r.min)} · ${fmtE(sugg.c.eur)}, soit encore ${fmtE(best.c.eur - sugg.c.eur)} d'économisés.</p>`;
+    ? `<p>⭐ <b>Le plus rapide est ton meilleur choix</b>${lim ? ` : en acceptant de perdre ${lim}, aucun trajet ne te fait gagner d'argent.` : '.'}</p>${lien(rapide)}`
+    : `<p>⭐ <b>En acceptant de perdre ${fmtT(best.r.min - t0)}, tu gagnes ${fmtE(rapide.c.eur - best.c.eur)} !</b></p>${lien(best)}`;
+  if (sugg) bandeau += `<p>💡 <b>En perdant ${fmtT(sugg.r.min - best.r.min)} de plus, tu pourrais gagner encore ${fmtE(best.c.eur - sugg.c.eur)} !</b></p>${lien(sugg)}`;
   $('list').innerHTML = `<li class="choix">${bandeau}<p class="nb">${routes.length} trajets comparés, ${autres.length} écartés.</p></li>` + html;
   draw();
 }
@@ -389,6 +390,13 @@ $('f').addEventListener('submit', run);
 $('swap').addEventListener('click', () => { const t = $('from').value; $('from').value = $('to').value; $('to').value = t; choix = { from: choix.to, to: choix.from }; });
 $('list').addEventListener('click', e => {
   if (e.target.closest('#vdom')) { voirDomines = !voirDomines; render(); return; }
+  const sel = e.target.closest('[data-sel]');
+  if (sel) {
+    hot = +sel.dataset.sel; render();
+    const li = document.querySelector(`#list .row[data-i="${hot}"]`);
+    if (li) li.scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'nearest' });
+    return;
+  }
   const g = e.target.closest('[data-gpx]'); if (g) { gpx(routes[+g.dataset.gpx], +g.dataset.gpx); return; }
   if (e.target.closest('a, details')) return;
   const li = e.target.closest('.row'); if (!li) return;

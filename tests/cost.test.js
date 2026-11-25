@@ -171,17 +171,30 @@ test('escalier : une suite de petites marches ne fait pas tout disparaître', ()
   assert.deepEqual(escalier(t), [0, 3, 6]);
 });
 
-import { valeurTempsAuto, meilleurChoix } from '../cost.js';
+import { choixLimite, LIMITE_DEF } from '../cost.js';
 
-test('valeurTempsAuto : le prix à l\'heure du trajet le plus rapide', () => {
-  near(valeurTempsAuto({ min: 240, eur: 120 }), 30);   // 120 € en 4 h
-  near(valeurTempsAuto({ min: 0, eur: 10 }), DEF.vh);   // durée nulle : valeur par défaut
+test('choixLimite : le moins cher dans la limite, suggestion jusqu\'à 2 fois, ou 3 fois si vrai gain', () => {
+  // Un escalier : plus rapide, +8 min (91 €), +1 h 12 (75 €), +1 h 29 (64 €)
+  const t = [{ min: 230, eur: 115 }, { min: 238, eur: 91 }, { min: 302, eur: 75 }, { min: 319, eur: 64 }];
+  assert.equal(LIMITE_DEF, 30);
+  // Limite 30 : choix +8 min. Jusqu'à 60 min : rien. Jusqu'à 90 min : +1 h 29 à 64 €, −30 % de 91 € : vrai gain.
+  assert.deepEqual(choixLimite(t, 30), { choix: 1, suggestion: 3 });
+  // Limite 25 : jusqu'à 50 min : rien. Jusqu'à 75 min : +1 h 12 à 75 €, seulement −18 % : pas assez.
+  assert.deepEqual(choixLimite(t, 25), { choix: 1, suggestion: -1 });
+  // Limite 36 : jusqu'à 72 min, +1 h 12 est suggéré sans condition…
+  assert.deepEqual(choixLimite(t, 36), { choix: 1, suggestion: 3 }); // … mais +1 h 29 (≤ 108 min, −30 %) fait mieux
+  // Limite 45 : +1 h 12 et +1 h 29 sous 90 min : le moins cher l'emporte.
+  assert.deepEqual(choixLimite(t, 45), { choix: 1, suggestion: 3 });
+  assert.deepEqual(choixLimite(t, 0), { choix: 0, suggestion: -1 });              // pressé : le plus rapide
+  assert.deepEqual(choixLimite(t, 5), { choix: 0, suggestion: 1 });               // +8 min, moins de 2 × 5
+  assert.deepEqual(choixLimite(t, Infinity), { choix: 3, suggestion: -1 });       // radin pur : le moins cher
+  assert.deepEqual(choixLimite([], 30), { choix: -1, suggestion: -1 });
 });
 
-test('meilleurChoix : l\'optimum peut tomber au milieu', () => {
-  const t = [{ min: 230, eur: 115 }, { min: 238, eur: 91 }, { min: 302, eur: 75 }, { min: 319, eur: 64 }];
-  const auto = valeurTempsAuto(t[0]);                  // 115 € / 3 h 50 = 30 €/h
-  assert.equal(meilleurChoix(t, auto), 1);             // 91 + 119 = 210, le plus bas
-  assert.equal(meilleurChoix(t, 5), 3);                // temps presque gratuit : le moins cher
-  assert.equal(meilleurChoix(t, 1000), 0);             // temps hors de prix : le plus rapide
+test('choixLimite : entre 2 et 3 fois la limite, un petit gain ne suffit pas', () => {
+  const t = [{ min: 200, eur: 100 }, { min: 225, eur: 80 }, { min: 275, eur: 70 }];
+  // Limite 30 : choix +25 min (80 €). +75 min est entre 60 et 90 min, −12,5 % seulement : pas de suggestion.
+  assert.deepEqual(choixLimite(t, 30), { choix: 1, suggestion: -1 });
+  // Même trajet à 55 € (−31 %) : vrai gain, suggéré.
+  assert.deepEqual(choixLimite([t[0], t[1], { min: 275, eur: 55 }], 30), { choix: 1, suggestion: 2 });
 });

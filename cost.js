@@ -177,18 +177,28 @@ export function escalier(items, seuil = MARCHE_MIN) {
   return out;
 }
 
-/**
- * Valeur du temps « automatique », en €/h : ce que coûte le trajet le plus rapide par heure de route.
- * Un détour doit donc faire économiser en proportion du trajet : sur un trajet de 4 h à 120 € (30 €/h),
- * 1 h de plus doit rapporter au moins 30 €. `rapide` : {min, eur}.
- */
-export function valeurTempsAuto(rapide) {
-  return rapide.min > 0 ? rapide.eur / (rapide.min / 60) : DEF.vh;
-}
+/** Temps en plus accepté par défaut (minutes), par rapport au trajet le plus rapide. */
+export const LIMITE_DEF = 30;
 
-/** Le trajet au meilleur total « euros + temps × valeur du temps (€/h) ». `items` : [{min, eur}] ; renvoie l'indice. */
-export function meilleurChoix(items, vh) {
-  let best = -1, score = Infinity;
-  items.forEach((x, i) => { const v = x.eur + x.min / 60 * vh; if (v < score) { score = v; best = i; } });
-  return best;
+/** Au-delà de 2 fois la limite (et jusqu'à 3 fois), une suggestion doit faire économiser au moins 25 % de plus. */
+export const VRAI_GAIN = 0.25;
+
+/**
+ * Le choix dans la limite de temps de l'utilisateur, et une suggestion au-delà.
+ * `items` : l'escalier ([{min, eur}]), du plus rapide au moins cher ; `limite` : minutes en plus acceptées
+ * (Infinity : peu importe). Le choix est le trajet le moins cher qui ne dépasse pas la limite.
+ * La suggestion est le moins cher jusqu'à 2 fois la limite ; jusqu'à 3 fois seulement s'il fait économiser
+ * au moins 25 % (VRAI_GAIN) du prix du choix. -1 s'il n'y en a pas.
+ */
+export function choixLimite(items, limite) {
+  if (!items.length) return { choix: -1, suggestion: -1 };
+  const t0 = items[0].min;
+  let choix = 0, suggestion = -1;
+  items.forEach((x, i) => { if (x.min - t0 <= limite) choix = i; });
+  items.forEach((x, i) => {
+    const plus = x.min - t0;
+    if (i <= choix || plus > 3 * limite) return;
+    if (plus <= 2 * limite || items[choix].eur - x.eur >= VRAI_GAIN * items[choix].eur) suggestion = i;
+  });
+  return { choix, suggestion };
 }

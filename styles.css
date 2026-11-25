@@ -144,3 +144,13 @@ footer a{color:inherit}
 .vhl.off{opacity:.5}
 .vhinfo{font-size:14px;color:var(--mut);margin:0 0 6px}
 .vhinfo b{color:var(--ink);font-weight:600}
+/* Temps en plus accepté */
+.lim{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:6px 0 14px}
+.lim[hidden]{display:none}
+.lim b{font-weight:500;color:var(--mut);width:100%}
+.lim button{padding:0 12px}
+.lim button[aria-pressed=true]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+/* Bandeau « Ton choix » */
+.choix{border-radius:12px;background:var(--soft);padding:12px 14px;margin:0 0 8px;font-size:15px}
+.choix p{margin:4px 0}.choix .nb{font-size:13px;color:var(--mut)}
+.bdg.idee{border-color:var(--ok);color:var(--ok)}

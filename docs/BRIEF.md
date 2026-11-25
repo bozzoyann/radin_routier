@@ -113,8 +113,8 @@ La v1 consiste à remettre le prototype au propre et à le mettre en ligne. La v
 **v1 : une appli fiable, utilisable sur téléphone**
 
 - [ ] Tester le prototype contre les vrais serveurs sur les trajets de référence, et corriger ce qui casse.
-- [ ] Découper le code en quelques fichiers (`index.html`, `app.js`, `cost.js`, `routing.js`, `styles.css`), sans framework ni étape de compilation.
-- [ ] Écrire des tests unitaires sous Node, sans dépendance, pour le décodage des tracés, le classement des tronçons, les totaux et la suppression des doublons.
+- [x] Découper le code en quelques fichiers (`index.html`, `app.js`, `cost.js`, `routing.js`, `styles.css`), sans framework ni étape de compilation.
+- [x] Écrire des tests unitaires sous Node, sans dépendance, pour le décodage des tracés, le classement des tronçons, les totaux et la suppression des doublons.
 - [ ] Ajouter le profil véhicule et l'assistant usure.
 - [ ] Ajouter les suggestions d'adresses pendant la saisie.
 - [ ] Publier sur GitHub Pages.

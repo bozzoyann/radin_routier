@@ -10,7 +10,7 @@ const RAPIDE = { auto: { use_tolls: 1, use_highways: 1 } };
 const LIBRE = { auto: { use_tolls: 0, use_highways: 0 } };
 
 /** Version affichée en haut de la page : à augmenter à chaque modification publiée. */
-export const VERSION = '1.7.0';
+export const VERSION = '1.7.1';
 export const VERSION_DATE = '25/11/2026';
 
 const $ = id => document.getElementById(id);
@@ -28,6 +28,7 @@ const suggTimer = {};                   // délais de frappe en cours, par champ
 let routes = [], ends = null, hot = -1, voirDomines = false;
 let trouves = [];                 // tous les trajets calculés pour la recherche en cours
 let expl = { etat: 'aucun' };     // exploration approfondie : aucun, pret, encours, fini
+let dejaFete = 0;                 // nombre de trouvailles déjà fêtées (une montagne de billets par nouvelle trouvaille)
 let limite = LIMITE_DEF;   // temps en plus accepté (minutes), Infinity : peu importe
 
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -112,12 +113,12 @@ function render() {
       note = `<p class="note">Seulement ${fmtE(ref.c.eur - c.eur)} de moins que le trajet ${num.get(ref.i)}, pour ${fmtT(r.min - ref.r.min)} de plus.</p>`;
     }
     if (!r.villes) r.villes = villesTraversees(r.pts);   // calculé une fois par trajet
-    const via = r.villes.length ? `<p class="via">par ${r.villes.map(esc).join(' · ')}</p>` : '';
+    const via = r.villes.length ? `<span class="via">par ${r.villes.map(esc).join(' · ')}</span>` : '';
     const refs = r.refs.slice(0, 4).map(x => `<span class="c${x[0] === 'D' ? ' cD' : ''}">${esc(x)}</span>`).join('');
     const peage = c.toll >= 0.5 ? `péage ${fmtE(c.toll)} <small>(~${Math.round(r.tollKm)} km)</small>` : 'sans péage';
     return `<li class="row${hot === i ? ' on' : ''}${estDomine ? ' dom' : ''}" data-i="${i}" style="--rc:${COLORS[i % COLORS.length]}"${estDomine && !voirDomines ? ' hidden' : ''}>
 <div class="r1"><span class="dot" style="background:${COLORS[i % COLORS.length]}"></span><strong>Trajet ${num.get(i)}</strong><span class="te"><span class="nw">${fmtT(r.min)}</span> · <span class="nw">${fmtE(c.eur)}</span></span>${star}</div>
-${via}<div class="refs">${refs}</div>${note}
+<div class="refs">${via}${refs}</div>${note}
 <div class="act"><a class="btn" href="${gmaps(r)}" target="_blank" rel="noopener">Google Maps ↗</a>
 <details class="dt"><summary>Détail</summary>
 ${r.mixte ? `<p class="mx">🔀 ${esc(r.mixte.texte)}</p>` : ''}<p><span class="nw">carburant ${fmtE(c.fuel)}</span> + <span class="nw">usure ${fmtE(c.wear)}</span> + <span class="nw">${peage}</span> = <b>${fmtE(c.eur)}</b></p>
@@ -141,7 +142,6 @@ ${r.mixte ? `<p class="mx">🔀 ${esc(r.mixte.texte)}</p>` : ''}<p><span class="
   let html = '';
   utiles.forEach((x, k) => { if (k) html += pas(utiles[k - 1], x); html += carte(x); });
   const nDom = autres.length;
-  html += blocExploration(utiles.filter(x => x.r.explore).length);
   if (nDom) {
     html += `<li class="more"><button type="button" id="vdom" aria-expanded="${voirDomines}">${voirDomines ? 'Masquer' : 'Voir'} ${nDom > 1 ? `les ${nDom} trajets écartés` : 'le trajet écarté'} <small>(moins cher${nDom > 1 ? 's' : ''} que le plus rapide, mais pas retenu${nDom > 1 ? 's' : ''})</small></button></li>`;
     html += autres.map(carte).join('');
@@ -153,7 +153,15 @@ ${r.mixte ? `<p class="mx">🔀 ${esc(r.mixte.texte)}</p>` : ''}<p><span class="
     ? `<p>⭐ <b>Le plus rapide est ton meilleur choix</b>${lim ? ` : en acceptant de perdre ${lim}, aucun trajet ne te fait gagner d'argent.` : '.'}</p>${lien(rapide)}`
     : `<p>⭐ <b>En acceptant de perdre ${fmtT(best.r.min - t0)}, tu gagnes ${fmtE(rapide.c.eur - best.c.eur)} !</b></p>${lien(best)}`;
   if (sugg) bandeau += `<p>💡 <b>En perdant ${fmtT(sugg.r.min - best.r.min)} de plus, tu pourrais gagner encore ${fmtE(best.c.eur - sugg.c.eur)} !</b></p>${lien(sugg)}`;
-  $('list').innerHTML = `<li class="choix">${bandeau}<p class="nb">${routes.length} trajets comparés : ${utiles.length} dans l'escalier, ${autres.length} écarté${autres.length > 1 ? 's' : ''}${plusChers.length ? `, ${plusChers.length} plus cher${plusChers.length > 1 ? 's' : ''} que le plus rapide (masqué${plusChers.length > 1 ? 's' : ''})` : ''}.</p></li>` + html;
+  // Trouvaille de l'exploration : mise en avant (et montagne de billets la première fois).
+  const neufs = utiles.filter(x => x.r.explore);
+  if (neufs.length) {
+    const top = [best, sugg].find(x => x && x.r.explore) || neufs.reduce((p, q) => q.c.eur < p.c.eur ? q : p);
+    const role = top === best ? ' Et c\'est ton meilleur choix ! 🏆' : top === sugg ? ' C\'est même celui à considérer 💡' : '';
+    bandeau = `<p class="trouve">🆕 <b>L'exploration a déniché ${neufs.length > 1 ? `${neufs.length} trajets` : 'un trajet'} que personne ne voyait !</b>${role}</p>${lien(top)}` + bandeau;
+    if (neufs.length > dejaFete) { dejaFete = neufs.length; pluieDeBillets(); }
+  }
+  $('list').innerHTML = `<li class="choix${neufs.length ? ' bravo' : ''}">${bandeau}<p class="nb">${routes.length} trajets comparés : ${utiles.length} dans l'escalier, ${autres.length} écarté${autres.length > 1 ? 's' : ''}${plusChers.length ? `, ${plusChers.length} plus cher${plusChers.length > 1 ? 's' : ''} que le plus rapide (masqué${plusChers.length > 1 ? 's' : ''})` : ''}.</p></li>` + blocExploration(neufs.length) + html;
   draw();
 }
 
@@ -188,6 +196,25 @@ function draw() {
   svg.innerHTML = lines + lab(A, ends.a.name) + lab(B, ends.b.name);
 }
 new ResizeObserver(draw).observe(svg);
+
+// Montagne de billets : ils tombent du haut de l'écran et s'empilent en pyramide, puis s'effacent.
+export function pluieDeBillets() {
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  const fete = document.createElement('div');
+  fete.className = 'fete'; fete.setAttribute('aria-hidden', 'true');
+  let html = '', k = 0;
+  for (let rang = 0; rang < 7; rang++) {            // 7 rangées : 7 billets en bas, 1 au sommet
+    const n = 7 - rang;
+    for (let j = 0; j < n; j++, k++) {
+      const x = (j - (n - 1) / 2) * 30, y = -rang * 20;
+      html += `<span style="--x:${x}px;--y:${y}px;--r:${Math.round(Math.random() * 360)}deg;--r2:${Math.round(Math.random() * 30 - 15)}deg;--d:${(k * 0.06).toFixed(2)}s">${k % 3 ? '💶' : '💸'}</span>`;
+    }
+  }
+  fete.innerHTML = html + '<b>Ka-ching !</b>';
+  document.body.appendChild(fete);
+  setTimeout(() => fete.classList.add('fin'), 3200);
+  setTimeout(() => fete.remove(), 3900);
+}
 
 // ---------- Exploration approfondie (bouton « Explorer encore ») ----------
 function blocExploration(nouveaux) {
@@ -249,7 +276,7 @@ async function run(e) {
     store.set('vpt-od', { from: $('from').value, to: $('to').value, cfrom: a, cto: b });
     ends = { a, b }; hot = -1; routes = [];
     if (expl.etat === 'encours') expl.stop = true;   // une nouvelle recherche arrête l'exploration en cours
-    expl = { etat: 'aucun' };
+    expl = { etat: 'aucun' }; dejaFete = 0;
     const found = []; let fails = 0;
     trouves = found;
     for (let p = 0; p < PROFILES.length; p++) {

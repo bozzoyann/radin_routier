@@ -2,7 +2,12 @@
 import { DEF, USURE_DEF, usureParKm, analyse, dedupe, cost, along, domines, marche } from './cost.js';
 import { PROFILES, DELAI_VALHALLA, geocode, route, suggest } from './routing.js';
 
+/** Version affichée en haut de la page : à augmenter à chaque modification publiée. */
+export const VERSION = '1.1.0';
+export const VERSION_DATE = '25/11/2026';
+
 const $ = id => document.getElementById(id);
+$('ver').textContent = `v${VERSION} · ${VERSION_DATE}`;
 const COLORS = ['#2a78d6', '#eb6834', '#1baf7a', '#c98500', '#d55181', '#6250d6', '#e34948'];
 const FUEL_DEF = { 'SP95-E10': 2.05, 'Gazole': 2.20 };
 const OLD_KEY = 'vpt-set2', PKEY = 'rr-profils', CKEY = 'rr-reglages';

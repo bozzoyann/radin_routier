@@ -8,3 +8,4 @@
 - Garde visible l'attribution « © contributeurs OpenStreetMap ».
 - Ne bombarde pas le serveur public Valhalla : laisse au moins une seconde entre deux requêtes.
 - Mobile d'abord : boutons d'au moins 44 px, et un affichage lisible en mode clair comme en mode sombre.
+- Version : à chaque modification publiée, augmente `VERSION` et `VERSION_DATE` en tête de `app.js` (1.0.x pour une correction, 1.x.0 pour une nouveauté). Elle s'affiche en haut de la page pour vérifier que le navigateur a la dernière version.

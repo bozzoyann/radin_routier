@@ -36,3 +36,28 @@ export function villesTraversees(pts, { rayon = 5, marge = 15, max = 3, ecart = 
   }
   return choisies.sort((x, y) => x.at - y.at).map(x => x.nom);
 }
+
+/**
+ * Villes étapes pour couper le trajet en deux : grandes villes (au moins `popMin` habitants) traversées
+ * par l'un des trajets déjà trouvés, entre `de` et `a` de sa longueur (30 % à 80 % par défaut).
+ * On garde les `n` plus peuplées, espacées d'au moins 50 km. Renvoie [{nom, lat, lon}].
+ */
+export function villesEtapes(routes, { n = 2, popMin = 50000, de = 0.3, a = 0.8, rayon = 5, villes = VILLES } = {}) {
+  const vues = new Map();
+  for (const r of routes) {
+    const R = reechantillonne(r.pts, 2), cum = [0];
+    for (let j = 1; j < R.length; j++) cum.push(cum[j - 1] + dkm(R[j - 1], R[j]));
+    const L = cum.at(-1) || 1;
+    for (const [nom, la, lo, pop] of villes) {
+      if (pop < popMin || vues.has(nom)) continue;
+      let best = Infinity, at = 0;
+      for (let j = 1; j < R.length; j++) { const d = dSegment([la, lo], R[j - 1], R[j]); if (d < best) { best = d; at = cum[j]; } }
+      if (best <= rayon && at / L >= de && at / L <= a) vues.set(nom, { nom, lat: la, lon: lo, pop });
+    }
+  }
+  const out = [];
+  for (const v of [...vues.values()].sort((x, y) => y.pop - x.pop)) {
+    if (out.length < n && out.every(o => dkm([o.lat, o.lon], [v.lat, v.lon]) >= 50)) out.push(v);
+  }
+  return out.map(({ nom, lat, lon }) => ({ nom, lat, lon }));
+}

@@ -82,7 +82,7 @@ export function candidats(routes, max = 4) {
 /** Les deux réglages Valhalla d'un trajet mixte : [première moitié, seconde moitié]. */
 export const reglagesMixte = (sens, rapide, libre) => (sens === 'rejoint' ? [libre, rapide] : [rapide, libre]);
 
-/** Assemble deux moitiés analysées (voir cost.js analyse) en un seul trajet mixte. */
+/** Assemble deux moitiés analysées (voir cost.js analyse) en un seul trajet mixte. `c.texte` remplace la description automatique. */
 export function joindre(a, b, c) {
   const route = r => r.refs.find(x => x[0] === 'A') || r.refs[0] || '';
   return {
@@ -93,7 +93,7 @@ export function joindre(a, b, c) {
     mixte: {
       sens: c.sens, via: c.p, kmVia: a.km,
       // ex. « Sans autoroute sur 156 km, puis A81 » ou « A10 sur 128 km, puis sans autoroute »
-      texte: c.sens === 'rejoint'
+      texte: c.texte ? c.texte : c.sens === 'rejoint'
         ? `Sans autoroute sur ${Math.round(a.km)} km, puis ${route(b) || 'autoroute'}`
         : `${route(a) || 'Autoroute'} sur ${Math.round(a.km)} km, puis sans autoroute`
     }

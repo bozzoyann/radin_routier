@@ -37,3 +37,20 @@ test('VILLES : données intégrées plausibles', () => {
   assert.ok(Math.abs(paris[1] - 48.85) < 0.05 && Math.abs(paris[2] - 2.35) < 0.05);
   for (const [nom, la, lo] of VILLES) assert.ok(la > 41 && la < 51.2 && lo > -5.2 && lo < 9.7, nom); // métropole
 });
+
+import { villesEtapes } from '../villes.js';
+
+test('villesEtapes : grandes villes au milieu des trajets, espacées', () => {
+  const long = Array.from({ length: 301 }, (_, k) => [0, 3 * k / 300]);   // ~333 km
+  const villes = [
+    ['Debut', 0, 0.3, 900000],     // à 10 % du trajet : trop tôt
+    ['Milieu', 0, 1.5, 300000],
+    ['Voisine', 0, 1.52, 250000],  // à 2 km de Milieu : écartée
+    ['Fin', 0, 2.25, 120000],      // à 75 % du trajet
+    ['Petite', 0, 1.8, 20000],     // moins de 50 000 habitants
+    ['Ailleurs', 1, 1.5, 800000]   // loin du tracé
+  ];
+  assert.deepEqual(villesEtapes([{ pts: long }], { villes }).map(v => v.nom), ['Milieu', 'Fin']);
+  assert.deepEqual(villesEtapes([{ pts: long }], { villes, n: 1 }).map(v => v.nom), ['Milieu']);
+  assert.deepEqual(villesEtapes([], { villes }), []);
+});

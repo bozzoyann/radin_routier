@@ -2,14 +2,14 @@
 import { DEF, USURE_DEF, usureParKm, analyse, dedupe, cost, along, domines, marche, escalier, choixLimite, LIMITE_DEF } from './cost.js';
 import { PROFILES, DELAI_VALHALLA, geocode, route, suggest } from './routing.js';
 import { candidats, reglagesMixte, joindre } from './mixtes.js';
-import { villesTraversees } from './villes.js';
+import { villesTraversees, villesEtapes } from './villes.js';
 
 // Réglages Valhalla des deux moitiés d'un trajet mixte.
 const RAPIDE = { auto: { use_tolls: 1, use_highways: 1 } };
 const LIBRE = { auto: { use_tolls: 0, use_highways: 0 } };
 
 /** Version affichée en haut de la page : à augmenter à chaque modification publiée. */
-export const VERSION = '1.5.0';
+export const VERSION = '1.6.0';
 export const VERSION_DATE = '25/11/2026';
 
 const $ = id => document.getElementById(id);
@@ -213,6 +213,24 @@ async function run(e) {
         routes = dedupe(found).sort((x, y) => x.min - y.min);
         render();
       } catch (err) { /* un point de bascule raté n'empêche pas les autres */ }
+    }
+
+    // Phase 3 : couper le trajet à une grande ville traversée. Sur le premier morceau, plus court,
+    // le serveur propose des variantes qu'il ignore sur le trajet complet ; on finit par le plus rapide.
+    const etapes = villesEtapes(dedupe(found));
+    for (let k = 0; k < etapes.length; k++) {
+      const v = etapes[k], V = { lat: v.lat, lon: v.lon };
+      st.textContent = `Recherche par étapes (${v.nom}) ${k + 1}/${etapes.length}…`;
+      try {
+        const debuts = [];
+        for (const p of [PROFILES[0], PROFILES[4]]) {   // rapide avec variantes, puis péage modéré
+          await sleep(DELAI_VALHALLA); debuts.push(...(await route(a, V, p)).map(analyse));
+        }
+        await sleep(DELAI_VALHALLA); const fin = analyse((await route(V, b, RAPIDE))[0]);
+        for (const d of dedupe(debuts)) found.push(joindre(d, fin, { sens: 'etape', p: [v.lat, v.lon], texte: `Variante jusqu'à ${v.nom}, puis le plus rapide` }));
+        routes = dedupe(found).sort((x, y) => x.min - y.min);
+        render();
+      } catch (err) { /* une étape ratée n'empêche pas les autres */ }
     }
     const sec = Math.round((performance.now() - t0) / 1000);
     st.textContent = `${a.name} → ${b.name} : ${routes.length} itinéraires différents en ${sec} s${fails ? ` (${fails} calcul${fails > 1 ? 's' : ''} en échec)` : ''}.`;

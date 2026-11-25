@@ -218,15 +218,16 @@ export const LIMITE_DEF = 30;
 /** Au-delà de 2 fois la limite (et jusqu'à 3 fois), une suggestion doit faire économiser au moins 20 % de plus. */
 export const VRAI_GAIN = 0.20;
 
-/** Garde-fou du choix (radin, mais pas trop) : chaque pas doit faire gagner au moins 3 €… */
-export const PAS_EUR = 3;
+/** Garde-fou du choix (radin, mais pas trop) : chaque pas doit faire gagner au moins 2 € et 2 % du prix
+ *  (en dessous, c'est dans la marge d'erreur du calcul, qui grandit avec la longueur du trajet)… */
+export const PAS_EUR = 2, PAS_PART = 0.02;
 /** …et au moins 1 € toutes les 3 minutes perdues (soit 20 € de l'heure). */
 export const MIN_PAR_EURO = 3;
 
 /** Vrai si passer du trajet `a` au trajet `b`, plus lent, rapporte assez (voir PAS_EUR et MIN_PAR_EURO). */
 export function rentable(a, b) {
   const de = a.eur - b.eur, dt = b.min - a.min;
-  return de >= PAS_EUR && de * MIN_PAR_EURO >= dt;
+  return de >= Math.max(PAS_EUR, PAS_PART * a.eur) && de * MIN_PAR_EURO >= dt;
 }
 
 // Depuis le trajet `depart`, on avance tant qu'un trajet plus lent (jusqu'à `maxMin`) est rentable ;
@@ -250,7 +251,7 @@ function avancer(items, depart, maxMin) {
  * Le choix dans la limite de temps de l'utilisateur, et une suggestion au-delà.
  * `items` : les trajets gardés ([{min, eur}]), triés du plus rapide au plus lent ; `limite` : minutes en plus
  * acceptées (Infinity : peu importe). Le choix est le trajet le moins cher qu'on atteint dans la limite en
- * partant du plus rapide, chaque pas rapportant au moins 3 € et 1 € toutes les 3 min (voir rentable).
+ * partant du plus rapide, chaque pas rapportant au moins 2 € et 2 % du prix, et 1 € toutes les 3 min (voir rentable).
  * La suggestion continue de la même façon jusqu'à 2 fois la limite ; jusqu'à 3 fois seulement si elle fait
  * économiser au moins 20 % (VRAI_GAIN) du prix du choix. -1 s'il n'y en a pas.
  */

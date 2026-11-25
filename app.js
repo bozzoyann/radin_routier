@@ -2,13 +2,14 @@
 import { DEF, USURE_DEF, usureParKm, analyse, dedupe, cost, along, domines, marche, escalier } from './cost.js';
 import { PROFILES, DELAI_VALHALLA, geocode, route, suggest } from './routing.js';
 import { candidats, reglagesMixte, joindre } from './mixtes.js';
+import { villesTraversees } from './villes.js';
 
 // Réglages Valhalla des deux moitiés d'un trajet mixte.
 const RAPIDE = { auto: { use_tolls: 1, use_highways: 1 } };
 const LIBRE = { auto: { use_tolls: 0, use_highways: 0 } };
 
 /** Version affichée en haut de la page : à augmenter à chaque modification publiée. */
-export const VERSION = '1.2.1';
+export const VERSION = '1.3.0';
 export const VERSION_DATE = '25/11/2026';
 
 const $ = id => document.getElementById(id);
@@ -103,11 +104,13 @@ function render() {
       const ref = [...utiles].reverse().find(u => u.r.min <= r.min);
       note = `<p class="note">Seulement ${fmtE(ref.c.eur - c.eur)} de moins que le trajet ${num.get(ref.i)}, pour ${fmtT(r.min - ref.r.min)} de plus.</p>`;
     }
+    if (!r.villes) r.villes = villesTraversees(r.pts);   // calculé une fois par trajet
+    const via = r.villes.length ? `<p class="via">par ${r.villes.map(esc).join(' · ')}</p>` : '';
     const refs = r.refs.slice(0, 4).map(x => `<span class="c${x[0] === 'D' ? ' cD' : ''}">${esc(x)}</span>`).join('');
     const peage = c.toll >= 0.5 ? `péage ${fmtE(c.toll)} <small>(~${Math.round(r.tollKm)} km)</small>` : 'sans péage';
-    return `<li class="row${hot === i ? ' on' : ''}${estDomine ? ' dom' : ''}" data-i="${i}"${estDomine && !voirDomines ? ' hidden' : ''}>
+    return `<li class="row${hot === i ? ' on' : ''}${estDomine ? ' dom' : ''}" data-i="${i}" style="--rc:${COLORS[i % COLORS.length]}"${estDomine && !voirDomines ? ' hidden' : ''}>
 <div class="r1"><span class="dot" style="background:${COLORS[i % COLORS.length]}"></span><strong>Trajet ${num.get(i)}</strong><span class="te"><span class="nw">${fmtT(r.min)}</span> · <span class="nw">${fmtE(c.eur)}</span></span>${star}</div>
-<div class="refs">${refs}</div>${note}
+${via}<div class="refs">${refs}</div>${note}
 <div class="act"><a class="btn" href="${gmaps(r)}" target="_blank" rel="noopener">Google Maps ↗</a>
 <details class="dt"><summary>Détail</summary>
 ${r.mixte ? `<p class="mx">🔀 ${esc(r.mixte.texte)}</p>` : ''}<p><span class="nw">carburant ${fmtE(c.fuel)}</span> + <span class="nw">usure ${fmtE(c.wear)}</span> + <span class="nw">${peage}</span> = <b>${fmtE(c.eur)}</b></p>
@@ -155,7 +158,9 @@ function draw() {
     const r = routes[i], step = Math.max(1, Math.floor(r.pts.length / 1500));
     const d = r.pts.filter((_, j) => j % step === 0 || j === r.pts.length - 1).map((p, j) => (j ? 'L' : 'M') + P(p).map(v => v.toFixed(1)).join(' ')).join('');
     const on = hot === i || (hot === -1 && !(domMap.has(i) && !voirDomines));
-    return `<path d="${d}" fill="none" stroke="${COLORS[i % COLORS.length]}" stroke-width="${hot === i ? 5 : 3}" stroke-linejoin="round" stroke-linecap="round" opacity="${on ? 1 : 0.25}"/>`;
+    // Un trait large et invisible par-dessus, pour toucher facilement le tracé au doigt.
+    return `<path d="${d}" fill="none" stroke="${COLORS[i % COLORS.length]}" stroke-width="${hot === i ? 6 : 3}" stroke-linejoin="round" stroke-linecap="round" opacity="${on ? 1 : 0.2}"/>`
+      + (domMap.has(i) && !voirDomines ? '' : `<path d="${d}" fill="none" stroke="transparent" stroke-width="18" data-i="${i}" style="cursor:pointer;pointer-events:stroke"/>`);
   }).join('');
   const A = P(routes[0].pts[0]), B = P(routes[0].pts[routes[0].pts.length - 1]);
   const ink = getComputedStyle(document.body).color;
@@ -359,4 +364,12 @@ $('list').addEventListener('click', e => {
   if (e.target.closest('a, details')) return;
   const li = e.target.closest('.row'); if (!li) return;
   hot = hot === +li.dataset.i ? -1 : +li.dataset.i; render();
+});
+// Toucher un tracé sur la carte sélectionne le trajet et fait défiler la liste jusqu'à lui.
+svg.addEventListener('click', e => {
+  const t = e.target.closest('[data-i]');
+  if (!t) { if (hot !== -1) { hot = -1; render(); } return; }
+  hot = +t.dataset.i; render();
+  const li = document.querySelector(`#list .row[data-i="${hot}"]`);
+  if (li) li.scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'nearest' });
 });

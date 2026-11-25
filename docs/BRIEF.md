@@ -82,7 +82,8 @@ L'écran tient en une colonne sur téléphone : la saisie, les réglages repliab
    - entre deux trajets successifs, une « marche » : « +8 min · −23 € », soit tant d'euros par minute en plus, avec un verdict (👍 ça vaut le coup si c'est au moins la valeur de l'heure, 😐 à toi de voir à partir de la moitié, 👎 mal payé en dessous) ;
    - un seul badge, « Meilleur choix pour toi » : l'escalier montre déjà le plus rapide (en haut) et le moins cher (en bas).
 6. **L'escalier** remplace le tri : les trajets utiles sont rangés du plus rapide au moins cher, chaque marche comparant un trajet au précédent. Une marche doit faire économiser au moins 12 % du prix du trajet précédent, sinon elle saute ; les trajets sautés et ceux qui sont plus lents et plus chers qu'un autre sont repliés sous « autres trajets ». (Décision du 25 novembre 2026 : le tri par « compromis » et les €/h n'étaient pas compris.)
-7. **Carte** : un schéma SVG en première version, un vrai fond de carte ensuite. Toucher un trajet met son tracé en évidence.
+7. **Carte** : un schéma SVG en première version, un vrai fond de carte ensuite. Elle reste visible en haut de l'écran pendant qu'on fait défiler la liste. Toucher un trajet met son tracé en évidence ; toucher un tracé sélectionne le trajet dans la liste.
+   - Chaque trajet indique jusqu'à 3 villes repères traversées (« par Albi · Mende · Saint-Étienne »), espacées d'au moins 25 % du trajet, tirées d'une liste intégrée de 519 préfectures, sous-préfectures et villes de 25 000 habitants et plus (générée par `outils/villes.mjs`).
 8. **Pour partir** : un lien Google Maps avec 3 points de passage et un fichier GPX pour OsmAnd ou Organic Maps. Waze n'accepte pas de points de passage dans un lien, il est donc exclu.
 9. **Confort** : des boutons d'au moins 44 px, et un affichage lisible en mode clair comme en mode sombre.
 

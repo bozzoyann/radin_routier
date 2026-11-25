@@ -125,3 +125,11 @@ footer a{color:inherit}
 /* Numéro de version, pour vérifier que le navigateur a la dernière page */
 .ver{font:500 13px Barlow,sans-serif;opacity:.85;margin-left:auto;white-space:nowrap;align-self:flex-end}
 .dt p.mx{color:var(--ink);font-weight:500}
+/* Villes traversées */
+.via{margin:0;font-size:15px;color:var(--ink)}
+/* Trajet sélectionné : bordure à sa couleur */
+.row.on{border-color:var(--rc);border-width:3px;padding:11px 13px}
+/* La carte reste visible en haut pendant qu'on fait défiler les trajets */
+.fig{position:sticky;top:0;z-index:3;box-shadow:0 4px 12px rgb(0 0 0/.12)}
+.row{scroll-margin-top:calc(min(34vh,380px) + 16px)}
+@media(max-width:700px){.fig{height:30vh;min-height:200px}.row{scroll-margin-top:calc(max(30vh,200px) + 16px)}}

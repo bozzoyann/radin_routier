@@ -13,7 +13,7 @@ const RAPIDE = { auto: { use_tolls: 1, use_highways: 1 } };
 const LIBRE = { auto: { use_tolls: 0, use_highways: 0 } };
 
 /** Version affichée en haut de la page : à augmenter à chaque modification publiée. */
-export const VERSION = '1.13.0';
+export const VERSION = '1.13.1';
 export const VERSION_DATE = '25/11/2026';
 
 const $ = id => document.getElementById(id);
@@ -100,7 +100,9 @@ function render() {
   // Seuls restent dans le pli les trajets écartés de peu (marche de moins de 12 %), utiles à analyser.
   // Aussi : moins de 1 € gagné pour plus de 5 min perdues par rapport au trajet de l'escalier juste plus rapide.
   const derisoire = x => { const ref = [...utiles].reverse().find(u => u.r.min <= x.r.min); return ref && ref.c.eur - x.c.eur < 1 && x.r.min - ref.r.min > 5; };
-  const plusChers = tousAutres.filter(x => x.c.eur >= prixRapide || x.domine || derisoire(x)), autres = tousAutres.filter(x => !plusChers.includes(x));
+  // Et un trajet qui dure presque autant (moins de 2 min d'écart) qu'un trajet de l'escalier moins cher.
+  const doublon = x => utiles.some(u => Math.abs(u.r.min - x.r.min) < 2 && u.c.eur <= x.c.eur);
+  const plusChers = tousAutres.filter(x => x.c.eur >= prixRapide || x.domine || derisoire(x) || doublon(x)), autres = tousAutres.filter(x => !plusChers.includes(x));
   masques = new Set(plusChers.map(x => x.i));
   // Ton choix : le moins cher dans ta limite de temps ; à considérer : un peu au-delà (voir cost.js choixLimite).
   const cl = choixLimite(utiles.map(x => ({ min: x.r.min, eur: x.c.eur })), limite);
@@ -117,10 +119,12 @@ function render() {
       const meilleur = utiles.find(u => u.r.min <= r.min && u.c.eur <= c.eur) || rows.find(u => !u.domine && u.r.min <= r.min && u.c.eur <= c.eur);
       note = `<p class="note">Plus lent et plus cher que le trajet ${num.get(meilleur.i)}.</p>`;
     } else if (estDomine) {
-      // Marche trop petite : on la compare au trajet de l'escalier juste plus rapide.
-      const ref = [...utiles].reverse().find(u => u.r.min <= r.min);
-      const de = ref.c.eur - c.eur;
-      note = `<p class="note">${de < 0.5 ? 'À peine moins cher' : `Seulement ${fmtE(de)} de moins`} que le trajet ${num.get(ref.i)}, pour ${fmtT(r.min - ref.r.min)} de plus.</p>`;
+      // Écarté : comparé au trajet de l'escalier le plus proche en durée (avant ou après lui).
+      const ref = utiles.reduce((p, q) => (Math.abs(q.r.min - r.min) < Math.abs(p.r.min - r.min) ? q : p));
+      const de = ref.c.eur - c.eur, dt = r.min - ref.r.min;
+      note = dt >= 0
+        ? `<p class="note">${de < 0.5 ? 'À peine moins cher' : `Seulement ${fmtE(de)} de moins`} que le trajet ${num.get(ref.i)}, pour ${fmtT(dt)} de plus.</p>`
+        : `<p class="note">${fmtT(-dt)} plus rapide que le trajet ${num.get(ref.i)}, mais ${fmtE(-de)} plus cher.</p>`;
     }
     if (!r.villes) r.villes = villesTraversees(r.pts);   // calculé une fois par trajet
     const via = r.villes.length ? `<span class="via">par ${r.villes.map(esc).join(' · ')}</span>` : '';

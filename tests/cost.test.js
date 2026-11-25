@@ -231,3 +231,19 @@ test('analyse : numéro d\'autoroute des tronçons payants', () => {
   ], { length: 60, time: 2400, has_toll: true }));
   assert.deepEqual(r.peages.map(p => p.ref), ['A43', null]);
 });
+
+test('escalier : bonne affaire en absolu, même si moins de 12 %', () => {
+  // 15 € de moins pour 8 min sur un trajet à 136 € : 11 % seulement, mais 1,9 €/min.
+  assert.deepEqual(escalier([{ min: 260, eur: 136 }, { min: 268, eur: 121 }]), [0, 1]);
+  // 4 € pour 2 min (2 €/min) : moins de 5 €, pas retenu.
+  assert.deepEqual(escalier([{ min: 260, eur: 136 }, { min: 262, eur: 132 }]), [0]);
+  // 6 € pour 20 min (0,3 €/min) : pas une affaire.
+  assert.deepEqual(escalier([{ min: 260, eur: 136 }, { min: 280, eur: 130 }]), [0]);
+});
+
+test('escalier : presque le même temps et moins cher, il remplace le précédent', () => {
+  const t = [{ min: 268, eur: 121 }, { min: 334, eur: 73 }, { min: 334.4, eur: 72 }];
+  assert.deepEqual(escalier(t), [0, 2]);
+  // Le plus rapide reste la référence, même si un trajet à 1 min de plus coûte moins cher.
+  assert.deepEqual(escalier([{ min: 100, eur: 50 }, { min: 101, eur: 49 }]), [0]);
+});

@@ -183,11 +183,17 @@ export function marche(haut, bas, seuil) {
 
 /** Une marche doit faire économiser au moins cette part du prix du trajet d'où elle part. */
 export const MARCHE_MIN = 0.12;
+/** …ou être une bonne affaire en absolu : au moins 5 €, à au moins 1 € par minute perdue. */
+export const AFFAIRE_EUR = 5, AFFAIRE_PAR_MIN = 1;
+/** En dessous de 2 min d'écart, deux trajets prennent « le même temps » : le moins cher l'emporte. */
+export const MEME_TEMPS = 2;
 
 /**
  * L'escalier : parmi les trajets `items` ([{min, eur}]), ceux qu'on montre, du plus rapide au moins cher.
  * On part du plus rapide ; un trajet plus lent n'est retenu que s'il fait économiser au moins
- * `seuil` (12 %) du prix du dernier trajet retenu. Les trajets dominés sont exclus d'office.
+ * `seuil` (12 %) du prix du dernier trajet retenu, ou au moins 5 € à 1 €/min ou plus (bonne affaire).
+ * Un trajet presque aussi rapide (moins de 2 min) et moins cher remplace le dernier retenu (sauf le plus
+ * rapide, qui reste la référence). Les trajets dominés sont exclus d'office.
  * Renvoie les indices retenus, dans l'ordre de l'escalier.
  */
 export function escalier(items, seuil = MARCHE_MIN) {
@@ -195,8 +201,13 @@ export function escalier(items, seuil = MARCHE_MIN) {
   const ordre = items.map((x, i) => i).filter(i => !dom.has(i)).sort((a, b) => items[a].min - items[b].min);
   const out = [];
   for (const i of ordre) {
-    const dernier = out.length ? items[out.at(-1)] : null;
-    if (!dernier || dernier.eur - items[i].eur >= seuil * dernier.eur) out.push(i);
+    const dernier = out.length ? items[out.at(-1)] : null, x = items[i];
+    if (!dernier) { out.push(i); continue; }
+    const de = dernier.eur - x.eur, dt = x.min - dernier.min;
+    // Presque le même temps (moins de 2 min de plus) et moins cher : il remplace le précédent.
+    if (dt < MEME_TEMPS && de > 0 && out.length > 1) { out[out.length - 1] = i; continue; }
+    // Marche retenue : 12 % d'économie, ou bonne affaire en absolu (5 € au moins, à 1 €/min au moins).
+    if (de >= seuil * dernier.eur || (de >= AFFAIRE_EUR && de / Math.max(dt, 0.5) >= AFFAIRE_PAR_MIN)) out.push(i);
   }
   return out;
 }

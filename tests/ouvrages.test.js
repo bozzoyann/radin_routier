@@ -12,14 +12,14 @@ const a75 = { km: 340, min: 200, hwKm: 330, routeKm: 10, villeKm: 0, tollKm: 330
   pts: [...ligne([45.7, 3.1], [44.079, 3.022], 50), ...ligne([44.079, 3.022], [43.35, 3.27], 50)], peages: [{ km: 330, i0: 0, i1: 101 }] };
 
 test('ouvragesTraverses : le viaduc de Millau, tarif d\'été et d\'hiver', () => {
-  assert.deepEqual(ouvragesTraverses(a75, hiver), [{ nom: 'Viaduc de Millau', prix: 11.3, km: 330, verifier: false, gratuit: false }]);
+  assert.deepEqual(ouvragesTraverses(a75, hiver), [{ nom: 'Viaduc de Millau', prix: 11.3, km: 330, i: 0, verifier: false, gratuit: false }]);
   assert.equal(ouvragesTraverses(a75, ete)[0].prix, 13.8);
   assert.equal(ouvragesTraverses(a75, new Date(2026, 8, 15))[0].prix, 13.8);   // 15 septembre inclus
   assert.equal(ouvragesTraverses(a75, new Date(2026, 8, 16))[0].prix, 11.3);
 });
 
 test('cost : le péage d\'un tronçon avec ouvrage est remplacé par le prix de l\'ouvrage', () => {
-  near(cost(a75, DEF).toll, 29.7);                                        // sans ouvrage : 330 km × 0,09 €
+  near(cost(a75, DEF).toll, 29.7);                                        // sans ouvrage : 330 km × 0,09 € (A75 hors grille)
   const r = { ...a75, ouvrages: ouvragesTraverses(a75, hiver) };
   near(cost(r, DEF).toll, 11.3);                                          // avec : le viaduc seul
   near(cost({ ...r, tollKm: 350 }, DEF).toll, 11.3 + 1.8);                // + 20 km payants ailleurs

@@ -139,7 +139,7 @@ La v1 est terminée quand, sur téléphone, Toulouse → Lyon affiche au moins 3
 
 - [ ] Prix du carburant du jour, récupéré dans les données publiques des prix des carburants.
 - [x] Ponts et tunnels à péage à leur prix réel (`ouvrages.js`, tarifs 2026, à mettre à jour chaque 1er février) : viaduc de Millau (tarif d'été), ponts de Normandie, de Tancarville et de l'île de Ré (payant vers l'île), tunnels du Mont-Blanc, du Fréjus, Maurice-Lemaire, du Puymorens, Prado-Carénage, Duplex A86. Un ouvrage remplace le prix au kilomètre du tronçon payant qui le contient : Valhalla marque parfois tout un axe comme payant (329 km d'A75 pour le seul viaduc de Millau).
-- [ ] Tarif au kilomètre par autoroute (tarif kilométrique moyen par société, rapports de l'ART), à la place des 0,09 €/km.
+- [x] Tarif réel au kilomètre des autoroutes APRR et AREA (13 autoroutes, de 0,085 €/km sur l'A5 à 0,183 €/km sur l'A19), calculé par `outils/peages.mjs` à partir des grilles entrée-sortie publiées sur data.gouv.fr. À relancer chaque année. Ailleurs, 0,09 €/km estimés. Pas encore de données ouvertes pour Vinci (ASF, Cofiroute, Escota) ni Sanef-SAPN.
 - [ ] Script annuel avec une clé de service de péage, lancé à la main, qui génère une base de tarifs (sans clé dans la page).
 - [ ] Un vrai fond de carte (Leaflet et tuiles OpenStreetMap, en respectant leurs conditions d'utilisation).
 - [ ] Appli installable sur l'écran d'accueil (PWA).

@@ -213,3 +213,21 @@ test('choixLimite : entre 2 et 3 fois la limite, un petit gain ne suffit pas', (
   // 18 % de gain ne suffit toujours pas.
   assert.deepEqual(choixLimite([t[0], t[1], { min: 275, eur: 65.6 }], 30), { choix: 1, suggestion: -1 });
 });
+
+test('cost : tarif réel au km de l\'autoroute du tronçon (peages-data.js), sinon tarif estimé', () => {
+  const tarifs = { A43: [0.136, 42], A6: [0.091, 196] };
+  const r = { km: 200, min: 120, hwKm: 200, routeKm: 0, villeKm: 0, tollKm: 160,
+    peages: [{ km: 100, i0: 0, i1: 1, ref: 'A43' }, { km: 50, i0: 1, i1: 2, ref: 'A75' }] };   // + 10 km sans tronçon
+  const c = cost(r, DEF, tarifs);
+  near(c.toll, 100 * 0.136 + 50 * 0.09 + 10 * 0.09);
+  assert.deepEqual(c.tarifsReels, ['A43']);
+  near(cost({ ...r, peages: [] }, DEF, tarifs).toll, 160 * 0.09);   // ancien trajet sans tronçons : tout au tarif estimé
+});
+
+test('analyse : numéro d\'autoroute des tronçons payants', () => {
+  const r = analyse(trip([
+    { length: 50, time: 1800, highway: true, toll: true, street_names: ['A 43', 'E 70'], begin_shape_index: 0, end_shape_index: 1 },
+    { length: 10, time: 600, toll: true, street_names: ['N 205'], begin_shape_index: 1, end_shape_index: 1 }
+  ], { length: 60, time: 2400, has_toll: true }));
+  assert.deepEqual(r.peages.map(p => p.ref), ['A43', null]);
+});

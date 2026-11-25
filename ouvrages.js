@@ -31,19 +31,19 @@ export const OUVRAGES = [
 /**
  * Ouvrages traversés par un trajet analysé (voir cost.js analyse : `pts` et `peages`, les tronçons payants).
  * Un ouvrage compte s'il est à moins de `tol` km d'un tronçon payant ; ce tronçon est alors facturé
- * au prix de l'ouvrage au lieu du prix au kilomètre. Renvoie [{nom, prix, km, verifier, gratuit}].
+ * au prix de l'ouvrage au lieu du prix au kilomètre. Renvoie [{nom, prix, km, i (indice du tronçon), verifier, gratuit}].
  */
 export function ouvragesTraverses(r, date = new Date(), { tol = 1, ouvrages = OUVRAGES } = {}) {
   const out = [];
   for (const o of ouvrages) {
-    for (const seg of r.peages || []) {
+    for (const [i, seg] of (r.peages || []).entries()) {
       let d = Infinity;
       for (let j = Math.max(seg.i0 + 1, 1); j <= seg.i1 && j < r.pts.length; j++) d = Math.min(d, dSegment(o.p, r.pts[j - 1], r.pts[j]));
       if (d > tol) continue;
       // Sens gratuit (pont de Ré au retour) : le tronçon ne coûte rien, mais il est retiré du prix au kilomètre.
       const debut = r.pts[seg.i0];
       const gratuit = !!o.paye && dkm(debut, o.paye.de) > dkm(debut, o.paye.vers);
-      out.push({ nom: o.nom, prix: gratuit ? 0 : o.prix(date), km: seg.km, verifier: !!o.verifier, gratuit });
+      out.push({ nom: o.nom, prix: gratuit ? 0 : o.prix(date), km: seg.km, i, verifier: !!o.verifier, gratuit });
       break;
     }
   }

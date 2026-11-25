@@ -11,7 +11,7 @@ const RAPIDE = { auto: { use_tolls: 1, use_highways: 1 } };
 const LIBRE = { auto: { use_tolls: 0, use_highways: 0 } };
 
 /** Version affichée en haut de la page : à augmenter à chaque modification publiée. */
-export const VERSION = '1.8.1';
+export const VERSION = '1.9.0';
 export const VERSION_DATE = '25/11/2026';
 
 const $ = id => document.getElementById(id);
@@ -121,7 +121,8 @@ function render() {
     const payants = r.ouvrages.filter(o => !o.gratuit);
     const dont = payants.map(o => `dont ${esc(o.nom)} ${fmtEur(o.prix)}${o.verifier ? ' <span title="sources en désaccord">⚠️ à vérifier</span>' : ''}`).join(', ');
     const gratuits = r.ouvrages.filter(o => o.gratuit).map(o => `${esc(o.nom)} gratuit dans ce sens`).join(', ');
-    const peage = c.toll >= 0.5 ? `péage ${fmtE(c.toll)} <small>(${dont || `~${Math.round(r.tollKm)} km`})</small>` : 'sans péage';
+    const precis = [dont, c.tarifsReels.length ? `tarif réel ${c.tarifsReels.join(', ')}` : ''].filter(Boolean).join(' ; ');
+    const peage = c.toll >= 0.5 ? `péage ${fmtE(c.toll)} <small>(${precis || `~${Math.round(r.tollKm)} km au tarif estimé`})</small>` : 'sans péage';
     const notePeage = gratuits ? `<p>${gratuits}</p>` : '';
     return `<li class="row${hot === i ? ' on' : ''}${estDomine ? ' dom' : ''}" data-i="${i}" style="--rc:${COLORS[i % COLORS.length]}"${estDomine && !voirDomines ? ' hidden' : ''}>
 <div class="r1"><span class="dot" style="background:${COLORS[i % COLORS.length]}"></span><strong>Trajet ${num.get(i)}</strong><span class="te"><span class="nw">${fmtT(r.min)}</span> · <span class="nw">${fmtE(c.eur)}</span></span>${star}</div>

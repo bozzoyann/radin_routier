@@ -1,4 +1,5 @@
 // Modèle de coût : fonctions pures, sans DOM, testées sous Node (tests/cost.test.js).
+import { TARIFS_KM } from './peages-data.js';
 
 /** Valeurs par défaut du profil et des critères (voir docs/BRIEF.md). */
 export const DEF = {prix: 2.05, usure: 0.07, cville: 7.5, croute: 5.5, cauto: 6.5, peage: 0.09, vh: 15};
@@ -51,14 +52,18 @@ export function analyse(trip) {
   const km = { autoroute: 0, ville: 0, route: 0 };
   let tollKm = 0, sum = 0, avant = null;
   const ech = [];   // entrées et sorties d'autoroute : {p: [lat, lon], type: 'entree'|'sortie', at: km}
-  const peages = [];   // tronçons payants : {km, i0, i1} (indices dans pts)
+  const peages = [];   // tronçons payants : {km, i0, i1, ref} (indices dans pts, numéro d'autoroute)
   for (const m of man) {
     const L = m.length || 0, k = classe(m);
     const hw = k === 'autoroute';
     if (avant !== null && hw !== avant && pts[m.begin_shape_index]) ech.push({ p: pts[m.begin_shape_index], type: hw ? 'entree' : 'sortie', at: sum });
     avant = hw; sum += L;
     km[k] += L;
-    if (m.toll) { tollKm += L; peages.push({ km: L, i0: m.begin_shape_index || 0, i1: m.end_shape_index || 0 }); }
+    if (m.toll) {
+      // Numéro d'autoroute du tronçon payant (« A 75 » → A75), pour lui appliquer son tarif réel (peages-data.js).
+      const a = (m.street_names || []).map(n => /^A\s?(\d+)\b/.exec(n.trim())).find(Boolean);
+      tollKm += L; peages.push({ km: L, i0: m.begin_shape_index || 0, i1: m.end_shape_index || 0, ref: a ? 'A' + a[1] : null });
+    }
   }
   const total = trip.summary.length;
   if (sum === 0) km.route = total;
@@ -82,13 +87,25 @@ export function dedupe(list, tol = 0.01) {
 }
 
 /** Coût d'un trajet analysé avec les réglages `s` (voir DEF). Euros et « compromis ». */
-export function cost(r, s) {
+export function cost(r, s, tarifs = TARIFS_KM) {
   const litres = (r.villeKm * s.cville + r.routeKm * s.croute + r.hwKm * s.cauto) / 100;
-  // Ouvrages traversés (voir ouvrages.js) : prix fixe, et leurs tronçons sortent du péage au kilomètre.
-  const ouv = r.ouvrages || [], kmOuv = ouv.reduce((t, o) => t + o.km, 0), prixOuv = ouv.reduce((t, o) => t + o.prix, 0);
-  const fuel = litres * s.prix, wear = r.km * s.usure, toll = Math.max(0, r.tollKm - kmOuv) * s.peage + prixOuv;
+  // Péage : chaque tronçon payant au tarif réel de son autoroute s'il est connu (peages-data.js), sinon au tarif
+  // estimé s.peage ; un tronçon qui porte un ouvrage (ouvrages.js) est remplacé par le prix de l'ouvrage.
+  const ouv = r.ouvrages || [], surOuvrage = new Set(ouv.map(o => o.i)), reels = new Set();
+  let peageTroncons = 0, kmTroncons = 0;
+  (r.peages || []).forEach((seg, k) => {
+    kmTroncons += seg.km;
+    if (surOuvrage.has(k)) return;
+    const t = seg.ref && tarifs[seg.ref];
+    if (t) reels.add(seg.ref);
+    peageTroncons += seg.km * (t ? t[0] : s.peage);
+  });
+  const prixOuv = ouv.reduce((t, o) => t + o.prix, 0);
+  // Kilomètres payants sans tronçon identifié (résumé « péage » sans manœuvre marquée) : tarif estimé.
+  const fuel = litres * s.prix, wear = r.km * s.usure;
+  const toll = peageTroncons + Math.max(0, r.tollKm - kmTroncons) * s.peage + prixOuv;
   const eur = fuel + wear + toll;
-  return { litres, fuel, wear, toll, eur, mix: eur + r.min / 60 * s.vh };
+  return { litres, fuel, wear, toll, eur, mix: eur + r.min / 60 * s.vh, tarifsReels: [...reels] };
 }
 
 /**

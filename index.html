@@ -11,40 +11,51 @@
 <meta name="apple-mobile-web-app-title" content="Radin routier">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500&family=Barlow+Semi+Condensed:wght@500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Semi+Condensed:wght@500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="vendor/leaflet/leaflet.css">
 <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-<header class="band top"><div>
-<div style="flex:1 1 320px"><h1>Radin routier</h1>
-<p>Parce qu'une minute ne vaut pas 15 € de péage. Temps, carburant, usure et péage : les itinéraires rangés du plus rapide au moins cher.</p></div>
-<button type="button" class="installer" id="installer" hidden>📲 Installer l'appli</button>
+<header class="tete">
+<span class="cartouche">RADIN ROUTIER</span>
+<button type="button" class="installer" id="installer" hidden>Installer l'appli</button>
 <span class="ver" id="ver" title="Version de l'appli chargée par ton navigateur"></span>
-</div></header>
-<main class="band">
+</header>
+<main>
 <form id="f">
-<div class="od">
+<!-- Après la recherche : départ et arrivée repliés en plaque, avec un crayon pour les modifier -->
+<div class="plaque" id="plaque">
+<div class="plaque-noms"><span id="pDep"></span><span id="pArr"></span></div>
+<button type="button" class="icone" id="edit" aria-label="Modifier le trajet"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16v4z"/></svg></button>
+</div>
+<div class="od" id="od">
 <div class="ac"><label for="from">Départ</label><input id="from" placeholder="ex. : Toulouse" autocomplete="off" required role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="from-l"><ul class="sugg" id="from-l" role="listbox" hidden></ul></div>
-<button type="button" class="swap" id="swap" aria-label="Inverser départ et arrivée">⇄</button>
+<button type="button" class="icone swap" id="swap" aria-label="Inverser départ et arrivée"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 4v16M8 4L4 8M8 4l4 4M16 20V4M16 20l-4-4M16 20l4-4"/></svg></button>
 <div class="ac"><label for="to">Arrivée</label><input id="to" placeholder="ex. : Lyon" autocomplete="off" required role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="to-l"><ul class="sugg" id="to-l" role="listbox" hidden></ul></div>
 </div>
 <details class="regl" id="regl">
-<summary><span>Réglages</span> <span class="sum" id="sum"></span></summary>
-<fieldset class="set">
+<summary><svg class="pic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg><span class="regl-titre">Réglages</span><span class="sum" id="sum"></span><svg class="pic chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></summary>
+<div class="regl-corps">
+<fieldset>
 <legend>Ta voiture</legend>
 <div class="prof">
 <label>Profil<select id="prof"></select></label>
-<label>Nom<input id="pnom" maxlength="40" autocomplete="off"></label>
-<div class="pbtn"><button type="button" id="padd">+ Nouveau</button><button type="button" id="pdel">Supprimer</button></div>
+<button type="button" class="icone" id="padd" aria-label="Nouveau profil"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button>
+<button type="button" class="icone" id="pdel" aria-label="Supprimer le profil"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 7h14M10 7V5h4v2M7 7l1 12h8l1-12"/></svg></button>
 </div>
+<label>Nom du profil<input id="pnom" maxlength="40" autocomplete="off"></label>
+<div class="deux">
 <label>Carburant<select id="carbu"><option>SP95-E10</option><option>SP98</option><option>Gazole</option><option>E85</option><option>GPL</option></select></label>
-<label><span id="prixl">Prix du SP95-E10</span><span class="u"><input id="prix" type="number" step="0.01" min="0" inputmode="decimal"><span>€/L</span></span></label>
-<div class="prixauto"><label class="chk"><input type="checkbox" id="prixauto" checked> Prix du jour (moyenne des stations)</label><small id="prixinfo"></small></div>
-<label>Usure et entretien<span class="u"><input id="usure" type="number" step="0.001" min="0" inputmode="decimal"><span>€/km</span></span></label>
-<label>Conso en ville<span class="u"><input id="cville" type="number" step="0.1" min="0" inputmode="decimal"><span>L/100</span></span></label>
-<label>Conso sur route<span class="u"><input id="croute" type="number" step="0.1" min="0" inputmode="decimal"><span>L/100</span></span></label>
-<label>Conso sur autoroute<span class="u"><input id="cauto" type="number" step="0.1" min="0" inputmode="decimal"><span>L/100</span></span></label>
+<label><span id="prixl">Prix du SP95-E10</span><span class="u"><input id="prix" type="number" step="0.001" min="0" inputmode="decimal"><span>€/L</span></span></label>
+</div>
+<div class="prixauto"><label class="chk"><input type="checkbox" id="prixauto" checked> Prix du jour</label><small id="prixinfo"></small></div>
+<div class="conso"><span class="conso-titre">Consommation (L/100 km)</span>
+<div class="trois">
+<label>Ville<input id="cville" type="number" step="0.1" min="0" inputmode="decimal"></label>
+<label>Route<input id="croute" type="number" step="0.1" min="0" inputmode="decimal"></label>
+<label>Autoroute<input id="cauto" type="number" step="0.1" min="0" inputmode="decimal"></label>
+</div></div>
+<div class="usure"><label>Usure et entretien<span class="u"><input id="usure" type="number" step="0.001" min="0" inputmode="decimal"><span>€/km</span></span></label><button type="button" class="secondaire" id="wizbtn" aria-controls="wiz">Calculer</button></div>
 </fieldset>
 <details class="wiz" id="wiz">
 <summary>Calculer l'usure de ta voiture</summary>
@@ -62,28 +73,40 @@
 </fieldset>
 <label class="chk"><input type="checkbox" id="rev"> Je roule plus de 20 000 km par an (la révision devient un coût au km)</label>
 <div class="revp" id="revp"><label>Prix de la révision<span class="u"><input id="rvp" type="number" min="0" step="10" inputmode="numeric"><span>€</span></span></label><label>Tous les<span class="u"><input id="rvk" type="number" min="0" step="1000" inputmode="numeric"><span>km</span></span></label></div>
-<p class="wtot">Total : <b id="wtot"></b> <button type="button" id="wapp">Appliquer au profil</button></p>
+<p class="wtot">Total : <b id="wtot"></b> <button type="button" class="secondaire" id="wapp">Appliquer au profil</button></p>
 </details>
-<fieldset class="set">
-<legend>Tes critères</legend>
-<label>Péage estimé<span class="u"><input id="peage" type="number" step="0.01" min="0" inputmode="decimal"><span>€/km</span></span></label>
+<fieldset>
+<legend>Péage</legend>
+<label>Hors tarifs connus<span class="u court"><input id="peage" type="number" step="0.01" min="0" inputmode="decimal"><span>€/km</span></span></label>
+<p class="hint">Tarif réel sur 40 autoroutes et 10 ponts et tunnels.</p>
 </fieldset>
+</div>
 </details>
 <button class="go" id="go">Comparer les itinéraires</button>
 </form>
 <p id="st" role="status"></p>
-<div class="lim" id="lim" role="group" aria-label="Temps en plus que tu acceptes" hidden>
-<b>Temps en plus que j'accepte :</b>
-<button type="button" data-l="0">0</button><button type="button" data-l="15">15 min</button><button type="button" data-l="30">30 min</button><button type="button" data-l="45">45 min</button><button type="button" data-l="60">1 h</button><button type="button" data-l="120">2 h</button><button type="button" data-l="inf">Peu importe</button>
+<div class="lim" id="lim" role="group" aria-label="Temps en plus accepté" hidden>
+<span class="etiq">Temps en plus accepté</span>
+<div class="reglette">
+<button type="button" data-l="0">0</button><button type="button" data-l="15">15</button><button type="button" data-l="30">30</button><button type="button" data-l="60">1 h</button><button type="button" data-l="120">2 h</button><button type="button" data-l="inf" aria-label="Peu importe">∞</button>
+</div>
 </div>
 <section id="res" hidden>
 <div class="fig"><div id="carte" role="region" aria-label="Carte des itinéraires"></div></div>
 <ul id="list"></ul>
 </section>
-<footer>
-<p>Euros = carburant + usure + péage. Les trajets sont rangés du plus rapide au moins cher : chaque marche dit combien de minutes tu ajoutes et combien d'euros tu économises. « Ton choix » est le trajet le moins cher qui ne dépasse pas le temps en plus que tu acceptes ; « À considérer » montre ce que tu gagnerais en acceptant un peu plus. La consommation est calculée tronçon par tronçon : autoroute, ville (moins de 50 km/h de moyenne) ou route. Prix du carburant du jour : moyenne des stations autour du départ (flux officiel des prix des carburants, ministère de l'Économie, Licence Ouverte), ou ton propre prix. Les durées sont calculées sans trafic. Péage : tarif réel au kilomètre de 40 autoroutes APRR, AREA et VINCI (A6, A7, A9, A10, A11, A43…), estimé pour Sanef et SAPN (A1, A4, A13, A14…), prix réel d'une dizaine de ponts et tunnels (viaduc de Millau, pont de Normandie, Mont-Blanc…), tarifs 2026 ; ailleurs, estimé au kilomètre. C'est une approximation, pas le tarif exact de la barrière.</p>
-<p>Itinéraires : <a href="https://valhalla.github.io/valhalla/">Valhalla</a> (serveur FOSSGIS). Adresses : <a href="https://photon.komoot.io">Photon</a>. Données © contributeurs <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>. Tarifs VINCI Autoroutes (ASF, Escota, Cofiroute) publiés par la société ; tarifs APRR et AREA (<a href="https://www.data.gouv.fr/datasets/tarifs-autoroutes-aprr">Licence Ouverte</a>) et gares de péage (<a href="https://www.data.gouv.fr/datasets/gares-de-peage-du-reseau-routier-national-concede">ODC-BY</a>) : data.gouv.fr. Villes : Insee (<a href="https://www.etalab.gouv.fr/licence-ouverte-open-licence/">Licence Ouverte</a>) et <a href="https://www.geonames.org/">GeoNames</a> (<a href="https://creativecommons.org/licenses/by/4.0/deed.fr">CC-BY 4.0</a>).</p>
-</footer>
+<details class="calcul">
+<summary>Comment c'est calculé<svg class="pic chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></summary>
+<dl>
+<dt>Carburant</dt><dd>Consommation ville, route ou autoroute selon chaque tronçon (ville : moins de 50 km/h de moyenne), au prix du jour des stations autour du départ, ou à ton prix.</dd>
+<dt>Usure</dt><dd>Ce qui s'use avec les kilomètres : pneus, freins, embrayage, pièces, décote. 7 c€/km par défaut, réglable.</dd>
+<dt>Péage</dt><dd>Tarif réel au kilomètre de 40 autoroutes (APRR, AREA, VINCI), estimé pour Sanef et SAPN, prix exact de 10 ponts et tunnels (viaduc de Millau, pont de Normandie…), tarifs 2026. Ailleurs, 0,09 €/km. C'est une approximation, pas le tarif exact de la barrière.</dd>
+<dt>Temps</dt><dd>Durées sans trafic.</dd>
+<dt>Escalier</dt><dd>Les trajets vont du plus rapide au moins cher ; une marche doit faire gagner au moins 12 %, ou 5 € à 1 €/min. « Ton choix » : le moins cher dans le temps en plus accepté.</dd>
+</dl>
+<p class="sources">Itinéraires <a href="https://valhalla.github.io/valhalla/">Valhalla</a> (serveur FOSSGIS) · adresses <a href="https://photon.komoot.io">Photon</a> · carte <a href="https://leafletjs.com">Leaflet</a> · données © contributeurs <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> · prix des carburants : ministère de l'Économie (Licence Ouverte) · tarifs VINCI Autoroutes publiés par la société ; tarifs APRR et AREA (<a href="https://www.data.gouv.fr/datasets/tarifs-autoroutes-aprr">Licence Ouverte</a>) et gares de péage (<a href="https://www.data.gouv.fr/datasets/gares-de-peage-du-reseau-routier-national-concede">ODC-BY</a>) : data.gouv.fr · villes : Insee (<a href="https://www.etalab.gouv.fr/licence-ouverte-open-licence/">Licence Ouverte</a>) et <a href="https://www.geonames.org/">GeoNames</a> (<a href="https://creativecommons.org/licenses/by/4.0/deed.fr">CC-BY 4.0</a>).</p>
+</details>
+<footer class="pied">Itinéraires Valhalla · adresses Photon · © contributeurs <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a></footer>
 </main>
 <script src="vendor/leaflet/leaflet.js"></script>
 <script type="module" src="app.js"></script>

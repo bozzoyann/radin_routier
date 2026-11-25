@@ -13,7 +13,7 @@ const RAPIDE = { auto: { use_tolls: 1, use_highways: 1 } };
 const LIBRE = { auto: { use_tolls: 0, use_highways: 0 } };
 
 /** Version affichée en haut de la page : à augmenter à chaque modification publiée. */
-export const VERSION = '1.15.0';
+export const VERSION = '1.16.0';
 export const VERSION_DATE = '25/11/2026';
 
 const $ = id => document.getElementById(id);
@@ -118,16 +118,14 @@ function render() {
   const ordre = [...utiles, ...autres, ...plusChers];
   const num = new Map(ordre.map((x, k) => [x.i, k + 1]));
 
-  const carte = ({ r, i, c, dom: estDomine, domine }) => {
-    const star = (best.i === i ? '<span class="bdg star">⭐ Ton choix</span>' : sugg && sugg.i === i ? '<span class="bdg idee">💡 À considérer</span>' : '')
-      + (r.explore ? '<span class="bdg neuf">🆕 Exploration</span>' : '');
+  const PIC = (d, cls = 'pic') => `<svg class="${cls}" viewBox="0 0 24 24" aria-hidden="true"><path d="${d}"/></svg>`;
+
+  // Un trajet : un point sur la ligne de l'escalier, prix puis durée, routes et villes, actions au toucher.
+  const carte = ({ r, i, c, dom: estDomine }, k, dernier) => {
+    const role = best.i === i ? 'Ton choix' : i === utiles[0].i ? 'Le plus rapide' : i === utiles.at(-1).i ? 'Le moins cher' : '';
     let note = '';
-    if (domine) {
-      const meilleur = utiles.find(u => u.r.min <= r.min && u.c.eur <= c.eur) || rows.find(u => !u.domine && u.r.min <= r.min && u.c.eur <= c.eur);
-      note = `<p class="note">Plus lent et plus cher que le trajet ${num.get(meilleur.i)}.</p>`;
-    } else if (estDomine) {
-      // Variante intermédiaire, affichée sous le trajet de l'escalier qui la précède ; comparée au plus proche
-      // en durée des deux trajets qui l'encadrent.
+    if (estDomine) {
+      // Variante intermédiaire, comparée au plus proche en durée des deux trajets qui l'encadrent.
       const prec = avant({ r }), suiv = utiles[utiles.indexOf(prec) + 1];
       if (suiv && suiv.r.min - r.min < r.min - prec.r.min) {
         note = `<p class="note">${fmtT(suiv.r.min - r.min)} plus rapide que le trajet ${num.get(suiv.i)}, mais ${fmtE(c.eur - suiv.c.eur)} plus cher.</p>`;
@@ -136,72 +134,77 @@ function render() {
         note = `<p class="note">${fmtT(r.min - prec.r.min)} de plus que le trajet ${num.get(prec.i)}, pour ${de < 0.5 ? 'à peine moins cher' : `seulement ${fmtE(de)} de moins`}.</p>`;
       }
     }
+    if (r.explore) note += '<p class="note">Trouvé par l\'exploration.</p>';
     if (!r.villes) r.villes = villesTraversees(r.pts);   // calculé une fois par trajet
-    const via = r.villes.length ? `<span class="via">par ${r.villes.map(esc).join(' · ')}</span>` : '';
+    const via = r.villes.length ? `<span class="via">${r.villes.map(esc).join(' · ')}</span>` : '';
     const refs = r.refs.slice(0, 4).map(x => `<span class="c${x[0] === 'D' ? ' cD' : ''}">${esc(x)}</span>`).join('');
     const payants = r.ouvrages.filter(o => !o.gratuit);
-    const dont = payants.map(o => `dont ${esc(o.nom)} ${fmtEur(o.prix)}${o.verifier ? ' <span title="sources en désaccord">⚠️ à vérifier</span>' : ''}`).join(', ');
+    const dont = payants.map(o => `dont ${esc(o.nom)} ${fmtEur(o.prix)}${o.verifier ? ' (à vérifier)' : ''}`).join(', ');
     const gratuits = r.ouvrages.filter(o => o.gratuit).map(o => `${esc(o.nom)} gratuit dans ce sens`).join(', ');
     // Tarif réel (grilles officielles) ou estimé à la main (Sanef, SAPN), voir outils/peages.mjs.
     const estime = a => String(TARIFS_KM[a]?.[2] || '').startsWith('estimé');
     const reels = c.tarifsReels.filter(a => !estime(a)), estimes = c.tarifsReels.filter(estime);
     const precis = [dont, reels.length ? `tarif réel ${reels.join(', ')}` : '', estimes.length ? `tarif estimé ${estimes.join(', ')}` : ''].filter(Boolean).join(' ; ');
     const peage = c.toll >= 0.5 ? `péage ${fmtE(c.toll)} <small>(${precis || `~${Math.round(r.tollKm)} km au tarif estimé`})</small>` : 'sans péage';
-    const notePeage = gratuits ? `<p>${gratuits}</p>` : '';
-    return `<li class="row${hot === i ? ' on' : ''}${estDomine ? ' dom' : ''}" data-i="${i}" style="--rc:${COLORS[i % COLORS.length]}"${estDomine && !voirDomines ? ' hidden' : ''}>
-<div class="r1"><span class="dot" style="background:${COLORS[i % COLORS.length]}"></span><strong>Trajet ${num.get(i)}</strong><span class="te"><span class="nw">${fmtT(r.min)}</span> · <span class="nw">${fmtE(c.eur)}</span></span>${star}</div>
-<div class="refs">${via}${refs}</div>${note}
-<div class="act"><a class="btn" href="${gmaps(r)}" target="_blank" rel="noopener">Google Maps ↗</a>
-<details class="dt"><summary>Détail</summary>
-${r.mixte ? `<p class="mx">🔀 ${esc(r.mixte.texte)}</p>` : ''}<p><span class="nw">carburant ${fmtE(c.fuel)}</span> + <span class="nw">usure ${fmtE(c.wear)}</span> + <span class="nw">${peage}</span> = <b>${fmtE(c.eur)}</b></p>${notePeage}
-<p><span class="nw">${Math.round(r.km)} km :</span> <span class="nw">autoroute ${Math.round(r.hwKm)}</span> · <span class="nw">route ${Math.round(r.routeKm)}</span> · <span class="nw">ville ${Math.round(r.villeKm)}</span></p>
-<button type="button" class="btn" data-gpx="${i}">Télécharger le GPX</button>
+    const cls = ['tr', hot === i ? 'on' : '', best.i === i ? 'choisi' : '', estDomine ? 'variante' : '', dernier ? 'dernier' : ''].filter(Boolean).join(' ');
+    return `<li class="${cls}" data-i="${i}" style="--rc:${COLORS[i % COLORS.length]}"${estDomine && !voirDomines ? ' hidden' : ''}>
+<div class="rail"><span class="point" style="background:${COLORS[i % COLORS.length]}"></span><span class="fil"></span></div>
+<div class="corps">
+<div class="tete-tr"><span class="prix">${fmtE(c.eur)}</span><span class="duree">${fmtT(r.min)}</span><span class="role">${role || `Trajet ${num.get(i)}`}</span></div>
+<div class="refs">${refs}${via}</div>${note}
+<div class="act"><a class="maps" href="${gmaps(r)}" target="_blank" rel="noopener">Ouvrir dans Maps</a>
+<details class="dt"><summary>Détail du prix</summary>
+${r.mixte ? `<p>${esc(r.mixte.texte)}</p>` : ''}<p><span class="nw">carburant ${fmtE(c.fuel)}</span> + <span class="nw">usure ${fmtE(c.wear)}</span> + <span class="nw">${peage}</span> = <b>${fmtE(c.eur)}</b></p>${gratuits ? `<p>${gratuits}</p>` : ''}
+<p>${Math.round(r.km)} km : autoroute ${Math.round(r.hwKm)} · route ${Math.round(r.routeKm)} · ville ${Math.round(r.villeKm)} · trajet ${num.get(i)}</p>
+<button type="button" class="gpx" data-gpx="${i}">Télécharger le GPX</button>
 </details></div>
+</div>
 </li>`;
   };
 
-  // Une marche entre deux trajets successifs de l'escalier, colorée selon ta limite de temps.
+  // Une marche entre deux trajets de l'escalier : vert dans ta limite, orange un peu au-delà, gris au-delà.
   const pas = (haut, bas) => {
     const m = marche({ min: haut.r.min, eur: haut.c.eur }, { min: bas.r.min, eur: bas.c.eur }, 0);
     const plus = bas.r.min - t0;
-    const [cls, mot] = plus <= limite ? ['y', '✅ dans ta limite'] : sugg && bas.r.min <= sugg.r.min ? ['m', '💡 un peu au-delà'] : ['n', '⏳ au-delà de ta limite'];
+    const cls = plus <= limite ? 'y' : sugg && bas.r.min <= sugg.r.min ? 'm' : 'n';
     const temps = m.dt > 0.5 ? `+${fmtT(m.dt)}` : 'même durée';
-    const taux = isFinite(m.parMin) ? `${fmtEur(m.parMin)} par minute en plus` : 'sans perdre de temps';
-    return `<li class="step ${cls}" aria-label="Du trajet ${num.get(haut.i)} au trajet ${num.get(bas.i)}">
-<span class="arr" aria-hidden="true">▼</span><span class="sd"><b>${temps}</b> · <b>−${fmtE(m.de)}</b></span><span class="sr">${taux} · ${mot}</span></li>`;
+    const taux = isFinite(m.parMin) ? `${fmtEur(m.parMin)}/min` : '';
+    return `<li class="marche ${cls}" aria-label="Du trajet ${num.get(haut.i)} au trajet ${num.get(bas.i)}"><span class="fil-seul"><span></span></span><span class="ecart">${temps} · −${fmtE(m.de)}<span>${taux}</span></span></li>`;
   };
 
+  // L'escalier, avec les variantes intermédiaires en retrait à leur place (si dépliées).
   let html = '';
-  // L'escalier, avec les variantes intermédiaires en retrait sous le trajet qu'elles suivent (si dépliées).
-  const nDom = autres.length;
-  if (nDom) html += `<li class="more"><button type="button" id="vdom" aria-expanded="${voirDomines}">${voirDomines ? 'Masquer' : 'Voir'} ${nDom > 1 ? `les ${nDom} variantes intermédiaires` : 'la variante intermédiaire'} <small>(quelques euros de moins seulement, affichée${nDom > 1 ? 's' : ''} en retrait à ${nDom > 1 ? 'leur' : 'sa'} place)</small></button></li>`;
-  // Une variante proche du trajet suivant s'affiche juste au-dessus de lui ; sinon, juste sous le précédent.
   const versSuivant = v => { const p = avant(v), n = utiles[utiles.indexOf(p) + 1]; return !!n && n.r.min - v.r.min < v.r.min - p.r.min; };
   utiles.forEach((x, k) => {
     if (k) {
       html += pas(utiles[k - 1], x);
-      html += autres.filter(v => avant(v) === utiles[k - 1] && versSuivant(v)).map(carte).join('');
+      html += autres.filter(v => avant(v) === utiles[k - 1] && versSuivant(v)).map(v => carte(v)).join('');
     }
-    html += carte(x);
-    html += autres.filter(v => avant(v) === x && !versSuivant(v)).map(carte).join('');
+    html += carte(x, k, k === utiles.length - 1 && !autres.some(v => avant(v) === x && !versSuivant(v)));
+    html += autres.filter(v => avant(v) === x && !versSuivant(v)).map(v => carte(v)).join('');
   });
-  // Bandeau : temps perdu, puis argent gagné, puis le trajet concerné (touchable pour le sélectionner).
-  const rapide = utiles[0], lim = isFinite(limite) ? (limite ? fmtT(limite) : '') : '';
-  const lien = x => `<button type="button" class="vers" data-sel="${x.i}">→ Trajet ${num.get(x.i)} : ${fmtT(x.r.min)} · ${fmtE(x.c.eur)}${x.r.villes && x.r.villes.length ? `, par ${x.r.villes.map(esc).join(' · ')}` : ''}</button>`;
-  let bandeau = best === rapide
-    ? `<p>⭐ <b>Le plus rapide est ton meilleur choix</b>${lim ? ` : en acceptant de perdre ${lim}, aucun trajet ne te fait gagner d'argent.` : '.'}</p>${lien(rapide)}`
-    : `<p>⭐ <b>En acceptant de perdre ${fmtT(best.r.min - t0)}, tu gagnes ${fmtE(rapide.c.eur - best.c.eur)} !</b></p>${lien(best)}`;
-  if (sugg) bandeau += `<p>💡 <b>En perdant ${fmtT(sugg.r.min - best.r.min)} de plus, tu pourrais gagner encore ${fmtE(best.c.eur - sugg.c.eur)} !</b></p>${lien(sugg)}`;
-  // Trouvaille de l'exploration : mise en avant (et montagne de billets la première fois).
+  const nDom = autres.length;
+  if (nDom) html += `<li class="plus"><button type="button" id="vdom" aria-expanded="${voirDomines}">${PIC('M6 9l6 6 6-6')}${voirDomines ? 'Masquer' : 'Voir'} ${nDom > 1 ? `les ${nDom} variantes intermédiaires` : 'la variante intermédiaire'}</button></li>`;
+
+  // Synthèse : panneau bleu. Ton choix, au-delà, avancement et exploration, compteur.
+  const rapide = utiles[0];
   const neufs = utiles.filter(x => x.r.explore);
   derniersNeufs = neufs.length;
+  let synth = '';
   if (neufs.length) {
     const top = [best, sugg].find(x => x && x.r.explore) || neufs.reduce((p, q) => q.c.eur < p.c.eur ? q : p);
-    const role = top === best ? ' Et c\'est ton meilleur choix ! 🏆' : top === sugg ? ' C\'est même celui à considérer 💡' : '';
-    bandeau = `<p class="trouve">🆕 <b>L'exploration a déniché ${neufs.length > 1 ? `${neufs.length} trajets` : 'un trajet'} que personne ne voyait !</b>${role}</p>${lien(top)}` + bandeau;
+    synth += `<div class="ligne"><span class="neuf">Nouveau</span><button type="button" class="sel" data-sel="${top.i}">L'exploration a trouvé ${neufs.length > 1 ? `${neufs.length} trajets` : 'un trajet'} : trajet ${num.get(top.i)}${top === best ? ', ton choix' : ''}</button></div>`;
     if (neufs.length > dejaFete) { dejaFete = neufs.length; pluieDeBillets(); }
   }
-  $('list').innerHTML = `<li class="choix${neufs.length ? ' bravo' : ''}">${bandeau}<p class="nb">${routes.length} trajets comparés : ${utiles.length} dans l'escalier${autres.length ? `, ${autres.length} variante${autres.length > 1 ? 's' : ''} intermédiaire${autres.length > 1 ? 's' : ''}` : ''}${plusChers.length ? `, ${plusChers.length} sans intérêt (en pointillés sur la carte)` : ''}.</p>${blocAvancement(neufs.length)}</li>` + html;
+  synth += `<div class="ligne"><span class="tag">${best === rapide ? 'Ton choix · le plus rapide' : 'Ton choix'}</span><button type="button" class="sel droite cond" data-sel="${best.i}">Trajet ${num.get(best.i)}</button></div>
+<div class="ligne"><span class="prix">${fmtE(best.c.eur)}</span><span class="duree">${fmtT(best.r.min)}</span></div>`;
+  synth += best === rapide
+    ? `<div class="ecart">${isFinite(limite) && limite ? `Rien à gagner en ${fmtT(limite)} de plus` : 'Aucun détour ne fait gagner d\'argent'}</div>`
+    : `<div class="ecart">−${fmtE(rapide.c.eur - best.c.eur)} pour +${fmtT(best.r.min - t0)} <span>vs le plus rapide</span></div>`;
+  if (sugg) synth += `<div class="sep"></div><div class="ligne"><span class="tag">Au-delà</span><button type="button" class="sel droite cond" data-sel="${sugg.i}">Trajet ${num.get(sugg.i)} · −${fmtE(best.c.eur - sugg.c.eur)} pour +${fmtT(sugg.r.min - best.r.min)}</button></div>`;
+  synth += blocAvancement(neufs.length);
+  synth += `<span class="compte">${routes.length} trajets comparés${plusChers.length ? ` · ${plusChers.length} sans intérêt, en pointillés sur la carte` : ''}</span>`;
+  $('list').innerHTML = `<li class="synth${neufs.length ? ' bravo' : ''}">${synth}</li>` + html;
   draw();
 }
 
@@ -252,7 +255,7 @@ function draw() {
 
 function choisirSurCarte(i) {
   hot = i; render();
-  const li = document.querySelector(`#list .row[data-i="${hot}"]`);
+  const li = document.querySelector(`#list .tr[data-i="${hot}"]`);
   if (li) li.scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'nearest' });
 }
 
@@ -266,7 +269,7 @@ export function pluieDeBillets() {
     const n = 7 - rang;
     for (let j = 0; j < n; j++, k++) {
       const x = (j - (n - 1) / 2) * 30, y = -rang * 20;
-      html += `<span style="--x:${x}px;--y:${y}px;--r:${Math.round(Math.random() * 360)}deg;--r2:${Math.round(Math.random() * 30 - 15)}deg;--d:${(k * 0.06).toFixed(2)}s">${k % 3 ? '💶' : '💸'}</span>`;
+      html += `<span style="--x:${x}px;--y:${y}px;--r:${Math.round(Math.random() * 360)}deg;--r2:${Math.round(Math.random() * 30 - 15)}deg;--d:${(k * 0.06).toFixed(2)}s">€</span>`;
     }
   }
   fete.innerHTML = html + '<b>Ka-ching !</b>';
@@ -277,22 +280,23 @@ export function pluieDeBillets() {
 
 // ---------- Exploration approfondie (bouton « Explorer encore ») ----------
 // Avancement de la recherche puis de l'exploration : un seul bloc, en bas de la synthèse, avec barre.
-const barre = (pc, txt, bouton = '') => `<div class="avance"><p>${txt}</p><div class="barre"><span style="width:${pc}%"></span></div>${bouton}</div>`;
+const barre = (pc, txt, bouton = '') => `<div class="avance-txt"><span>${txt}</span><span class="pc">${pc} %</span></div>
+<div class="route-barre" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pc}"><span class="trace" style="width:${pc}%"></span><span class="voiture" style="left:${pc}%"></span></div>${bouton}`;
+const LOUPE = '<svg class="pic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6"/><path d="M20 20l-4-4"/></svg>';
 function blocAvancement(nouveaux = derniersNeufs) {
   let h = '';
   if (rech.etat === 'encours') {
-    const pc = Math.min(99, Math.round(100 * rech.fait / Math.max(1, rech.total)));
-    h = barre(pc, `🔍 ${rech.libelle} <span class="pc">${pc} %</span>`);
+    h = barre(Math.min(99, Math.round(100 * rech.fait / Math.max(1, rech.total))), esc(rech.libelle));
   } else if (expl.etat === 'encours') {
     const pc = Math.round(100 * expl.fait / Math.max(1, expl.total));
-    h = barre(pc, `🔍 Exploration : ${expl.testes} trajets testés${nouveaux ? ` · <b>${nouveaux} nouveau${nouveaux > 1 ? 'x' : ''} 🆕</b>` : ''} <span class="pc">${pc} %</span>`, '<button type="button" id="stopx">Arrêter</button>');
+    h = barre(pc, `Exploration · ${expl.testes} trajets testés${nouveaux ? ` · ${nouveaux} nouveau${nouveaux > 1 ? 'x' : ''}` : ''}`, '<button type="button" class="contour" id="stopx">Arrêter</button>');
   } else if (rech.etat === 'fini') {
-    const fin = `✅ Recherche terminée en ${rech.sec} s${rech.echecs ? ` (${rech.echecs} calcul${rech.echecs > 1 ? 's' : ''} en échec)` : ''}.`;
     if (expl.etat === 'fini') {
-      h = `<p>${nouveaux ? `✅ Exploration terminée : <b>${nouveaux} nouveau${nouveaux > 1 ? 'x' : ''} trajet${nouveaux > 1 ? 's' : ''} 🆕</b>` : '✅ Exploration terminée : rien de mieux à trouver'}, ${expl.testes} trajets de plus testés${expl.stop ? ' (arrêtée avant la fin)' : ''}.</p>`;
+      h = `<div class="avance-txt"><span>Exploration terminée : ${nouveaux ? `${nouveaux} nouveau${nouveaux > 1 ? 'x' : ''} trajet${nouveaux > 1 ? 's' : ''}` : 'rien de mieux à trouver'} · ${expl.testes} trajets de plus testés${expl.stop ? ' (arrêtée)' : ''}</span></div>`;
     } else {
       const n = expl.etat === 'pret' ? coutPlan(planExploration(trouves, ends.a, ends.b)) : 0;
-      h = `<p>${fin}</p>` + (n ? `<button type="button" id="explo">🔍 Explorer encore <small>(≈ ${String(Math.max(0.5, Math.round(n * 1.5 / 30) / 2)).replace('.', ',')} min, ${n} calculs de plus)</small></button>` : '');
+      h = `<div class="avance-txt"><span>Recherche terminée en ${rech.sec} s${rech.echecs ? ` · ${rech.echecs} calcul${rech.echecs > 1 ? 's' : ''} en échec` : ''}</span></div>`
+        + (n ? `<button type="button" class="contour" id="explo">${LOUPE}Explorer encore <small>≈ ${String(Math.max(0.5, Math.round(n * 1.5 / 30) / 2)).replace('.', ',')} min</small></button>` : '');
     }
   }
   return `<div id="avancement">${h}</div>`;
@@ -359,7 +363,9 @@ async function run(e) {
         if (!st.classList.contains('err')) st.textContent = '';   // l'avancement passe dans la synthèse
         // Affichage au fil de l'eau : la liste se remplit dès la première réponse.
         routes = dedupe(found).sort((x, y) => x.min - y.min);
-        $('res').hidden = false; $('lim').hidden = false; render();
+        $('res').hidden = false; $('lim').hidden = false;
+        $('pDep').textContent = a.name; $('pArr').textContent = b.name; $('f').classList.add('replie'); $('regl').open = false;
+        render();
         // Aux premiers trajets, on fait défiler jusqu'à la carte (avec la progression juste au-dessus).
         if (!defile) {
           defile = true;
@@ -410,7 +416,7 @@ async function run(e) {
     rech = { etat: 'aucune' }; majAvancement();
     st.className = 'err';
     st.textContent = !navigator.onLine || (err && err.message === HORS_LIGNE)
-      ? '📵 Pas de connexion : Radin routier a besoin d\'internet pour calculer les trajets.'
+      ? 'Pas de connexion : Radin routier a besoin d\'internet pour calculer les trajets.'
       : 'Oups : ' + (err && err.message ? err.message : 'erreur réseau') + '.';
   } finally { go.disabled = false; }
 }
@@ -543,7 +549,7 @@ $('wiz').addEventListener('input', e => {
 $('wapp').addEventListener('click', () => {
   $('usure').value = Math.round(calculerAssistant() * 1000) / 1000;
   render();
-  $('wapp').textContent = 'Appliqué ✓'; setTimeout(() => { $('wapp').textContent = 'Appliquer au profil'; }, 1500);
+  $('wapp').textContent = 'Appliqué'; setTimeout(() => { $('wapp').textContent = 'Appliquer au profil'; }, 1500);
 });
 
 // ---------- Suggestions d'adresses ----------
@@ -596,13 +602,13 @@ $('list').addEventListener('click', e => {
   const sel = e.target.closest('[data-sel]');
   if (sel) {
     hot = +sel.dataset.sel; render();
-    const li = document.querySelector(`#list .row[data-i="${hot}"]`);
+    const li = document.querySelector(`#list .tr[data-i="${hot}"]`);
     if (li) li.scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'nearest' });
     return;
   }
   const g = e.target.closest('[data-gpx]'); if (g) { gpx(routes[+g.dataset.gpx], +g.dataset.gpx); return; }
   if (e.target.closest('a, details')) return;
-  const li = e.target.closest('.row'); if (!li) return;
+  const li = e.target.closest('.tr'); if (!li) return;
   hot = hot === +li.dataset.i ? -1 : +li.dataset.i; render();
 });
 
@@ -617,3 +623,7 @@ $('installer').addEventListener('click', async () => {
   invitation = null; $('installer').hidden = true;
 });
 addEventListener('appinstalled', () => { $('installer').hidden = true; });
+
+// Plaque départ / arrivée : le crayon rouvre la saisie ; « Calculer » ouvre l'assistant usure.
+$('edit').addEventListener('click', () => { $('f').classList.remove('replie'); $('from').focus(); });
+$('wizbtn').addEventListener('click', () => { $('wiz').open = true; $('wiz').scrollIntoView({ behavior: 'smooth', block: 'start' }); });

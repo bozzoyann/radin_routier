@@ -1,9 +1,14 @@
 // Interface : saisie, réglages, liste des trajets, carte schématique, exports.
 import { DEF, USURE_DEF, usureParKm, analyse, dedupe, cost, along, domines, marche } from './cost.js';
 import { PROFILES, DELAI_VALHALLA, geocode, route, suggest } from './routing.js';
+import { candidats, reglagesMixte, joindre } from './mixtes.js';
+
+// Réglages Valhalla des deux moitiés d'un trajet mixte.
+const RAPIDE = { auto: { use_tolls: 1, use_highways: 1 } };
+const LIBRE = { auto: { use_tolls: 0, use_highways: 0 } };
 
 /** Version affichée en haut de la page : à augmenter à chaque modification publiée. */
-export const VERSION = '1.1.1';
+export const VERSION = '1.2.0';
 export const VERSION_DATE = '25/11/2026';
 
 const $ = id => document.getElementById(id);
@@ -46,7 +51,12 @@ function save() {
 }
 
 function gmaps(r) {
-  const ll = p => `${p[0].toFixed(5)},${p[1].toFixed(5)}`, w = along(r.pts, [0.25, 0.5, 0.75]).map(ll).join('|');
+  const ll = p => `${p[0].toFixed(5)},${p[1].toFixed(5)}`;
+  // Trajet mixte : le point de bascule devient l'étape du milieu, encadrée par un point de chaque moitié.
+  let etapes;
+  if (r.mixte) { const f = r.mixte.kmVia / r.km; etapes = [along(r.pts, [f / 2])[0], r.mixte.via, along(r.pts, [f + (1 - f) / 2])[0]]; }
+  else etapes = along(r.pts, [0.25, 0.5, 0.75]);
+  const w = etapes.map(ll).join('|');
   return `https://www.google.com/maps/dir/?api=1&travelmode=driving&origin=${ll(r.pts[0])}&destination=${ll(r.pts[r.pts.length - 1])}&waypoints=${encodeURIComponent(w)}`;
 }
 
@@ -95,7 +105,7 @@ function render() {
 <div class="refs">${refs}</div>${note}
 <div class="act"><a class="btn" href="${gmaps(r)}" target="_blank" rel="noopener">Google Maps ↗</a>
 <details class="dt"><summary>Détail</summary>
-<p><span class="nw">carburant ${fmtE(c.fuel)}</span> + <span class="nw">usure ${fmtE(c.wear)}</span> + <span class="nw">${peage}</span> = <b>${fmtE(c.eur)}</b></p>
+${r.mixte ? `<p class="mx">🔀 ${esc(r.mixte.texte)}</p>` : ''}<p><span class="nw">carburant ${fmtE(c.fuel)}</span> + <span class="nw">usure ${fmtE(c.wear)}</span> + <span class="nw">${peage}</span> = <b>${fmtE(c.eur)}</b></p>
 <p><span class="nw">${Math.round(r.km)} km :</span> <span class="nw">autoroute ${Math.round(r.hwKm)}</span> · <span class="nw">route ${Math.round(r.routeKm)}</span> · <span class="nw">ville ${Math.round(r.villeKm)}</span></p>
 <button type="button" class="btn" data-gpx="${i}">Télécharger le GPX</button>
 </details></div>
@@ -174,6 +184,20 @@ async function run(e) {
       if (p < PROFILES.length - 1) await sleep(DELAI_VALHALLA);
     }
     if (!found.length) throw new Error('le serveur d\'itinéraires n\'a rien renvoyé (connexion coupée, ou serveur saturé : réessaie dans une minute)');
+
+    // Phase 2 : trajets mixtes, là où un trajet sans autoroute rejoint (ou quitte) un trajet par autoroute.
+    const pts = candidats(dedupe(found));
+    for (let k = 0; k < pts.length; k++) {
+      st.textContent = `Recherche de trajets mixtes ${k + 1}/${pts.length}…`;
+      const c = pts[k], P = { lat: c.p[0], lon: c.p[1] }, [r1, r2] = reglagesMixte(c.sens, RAPIDE, LIBRE);
+      try {
+        await sleep(DELAI_VALHALLA); const m1 = analyse((await route(a, P, r1))[0]);
+        await sleep(DELAI_VALHALLA); const m2 = analyse((await route(P, b, r2))[0]);
+        found.push(joindre(m1, m2, c));
+        routes = dedupe(found).sort((x, y) => x.min - y.min);
+        render();
+      } catch (err) { /* un point de bascule raté n'empêche pas les autres */ }
+    }
     const sec = Math.round((performance.now() - t0) / 1000);
     st.textContent = `${a.name} → ${b.name} : ${routes.length} itinéraires différents en ${sec} s${fails ? ` (${fails} calcul${fails > 1 ? 's' : ''} en échec)` : ''}.`;
   } catch (err) {

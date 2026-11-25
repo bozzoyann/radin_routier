@@ -12,6 +12,9 @@ Waze te fait faire 50 km de détour et payer 15 € de péage pour gagner une mi
 
 ## Comment ça calcule
 
+En plus de 6 calculs classiques, l'appli cherche des **trajets mixtes** : sans autoroute là où elle fait un détour, autoroute là où elle est directe. Elle repère seule les points de bascule, sans qu'on lui indique d'étape.
+
+
 Les euros d'un trajet = carburant + usure + péage.
 
 - **Carburant** : chaque tronçon est classé en autoroute, route ou ville, avec la consommation correspondante.

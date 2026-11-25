@@ -124,3 +124,4 @@ footer a{color:inherit}
 @media(max-width:700px){.act{grid-column:auto;grid-row:auto;margin-top:0}}
 /* Numéro de version, pour vérifier que le navigateur a la dernière page */
 .ver{font:500 13px Barlow,sans-serif;opacity:.85;margin-left:auto;white-space:nowrap;align-self:flex-end}
+.dt p.mx{color:var(--ink);font-weight:500}

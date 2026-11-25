@@ -121,6 +121,10 @@ La v1 consiste à remettre le prototype au propre et à le mettre en ligne. La v
 
 La v1 est terminée quand, sur téléphone, Toulouse → Lyon affiche au moins 3 trajets différents en moins de 15 secondes, et que chaque total se retrouve à la main à partir de son détail.
 
+**v1.2 : trajets mixtes (fait)**
+
+- [x] Après les 6 calculs, repérer les endroits où un trajet sans autoroute rejoint (ou quitte) un trajet par autoroute, et calculer « sans autoroute jusque-là, puis autoroute » (et l'inverse) : 4 points au plus, 8 requêtes, environ 10 s de plus. Le point de bascule sert d'étape au lien Google Maps.
+
 **v2 : des chiffres plus justes**
 
 - [ ] Prix du carburant du jour, récupéré dans les données publiques des prix des carburants.

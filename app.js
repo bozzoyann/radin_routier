@@ -9,7 +9,7 @@ import { TARIFS_KM } from './peages-data.js';
 import { prixDuJour } from './carburant.js';
 
 /** Version affichée en haut de la page : à augmenter à chaque modification publiée. */
-export const VERSION = '1.34.2';
+export const VERSION = '1.34.3';
 export const VERSION_DATE = '27/11/2026';
 
 const $ = id => document.getElementById(id);
@@ -251,7 +251,7 @@ ${r.mixte ? `<p>${esc(r.mixte.texte)}</p>` : ''}<div class="repart-dt">${anneau(
   const marge = mp ? `<span class="marge">Marge pro <b>${mp.marge >= 0 ? '+' : '−'}${Math.abs(mp.marge)} €</b></span>` : '';
   const etiquette = `Ton choix coûte ${pb.tot} € : conso ${pb.conso} €, usure ${pb.usure} €, ${pb.peage >= 1 ? `péage ${pb.peage} €` : 'sans péage'}${eco >= 1 ? `, et tu économises ${eco} € par rapport au plus rapide` : ''}.`;
   synth += `<div class="choix-tete"><div class="choix-g">
-<div class="ligne"><span class="tag">${best === rapide ? 'Ton choix · le plus rapide' : 'Ton choix'}</span><button type="button" class="sel droite" data-sel="${best.id}">${esc(nom(best))}</button></div>
+<div class="ligne"><button type="button" class="sel titre" data-sel="${best.id}" aria-label="Ton choix : ${esc(nom(best))}">${esc(best === rapide ? `Le plus rapide${nom(best) ? ` · ${nom(best)}` : ''}` : nom(best) || `Trajet ${numero.get(best.id)}`)}</button></div>
 <div class="ligne"><span class="prix">${pb.tot} €</span><span class="duree">${fmtT(best.r.min)}</span></div><div class="chips">${ecart}${marge}</div></div>
 ${anneau(best.c, rapide.c.eur, { etiquette, taille: 88 })}</div>
 <div class="repart" aria-hidden="true"><span><i class="pt pt-conso"></i>Conso <b>${pb.conso} €</b></span><span><i class="pt pt-usure"></i>Usure <b>${pb.usure} €</b></span>${pb.peage >= 1 ? `<span><i class="pt pt-peage"></i>Péage <b>${pb.peage} €</b></span>` : `<span>${s.rembourse && best.c.toll >= 0.5 ? 'Péage remboursé' : 'Sans péage'}</span>`}${eco >= 1 ? `<span><i class="pt pt-eco"></i>Économie <b>${eco} €</b></span>` : ''}</div>`;

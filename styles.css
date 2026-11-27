@@ -299,6 +299,7 @@ body.resultats .leaflet-bottom{bottom:24px}
 /* Carte Leaflet */
 #carte{background:var(--line);font:14px Inter,sans-serif}
 .leaflet-container a{color:var(--bleu-txt)}
+.bulle{font:700 14px Inter,sans-serif;padding:5px 10px;border-radius:10px;border:2px solid #fff;background:var(--bleu);color:#fff;box-shadow:0 3px 10px rgb(0 0 0/.3);white-space:nowrap}.bulle::before{display:none}
 .etiquette{font:600 13px Inter,sans-serif;padding:3px 8px;border-radius:8px;border:0;box-shadow:0 2px 8px rgb(0 0 0/.25)}
 .leaflet-bar{border:0!important;border-radius:12px!important;overflow:hidden;box-shadow:var(--ombre-pt)!important}
 .leaflet-bar a{width:40px;height:40px;line-height:40px}

@@ -9,7 +9,7 @@ import { TARIFS_KM } from './peages-data.js';
 import { prixDuJour } from './carburant.js';
 
 /** Version affichée en haut de la page : à augmenter à chaque modification publiée. */
-export const VERSION = '1.33.1';
+export const VERSION = '1.34.0';
 export const VERSION_DATE = '27/11/2026';
 
 const $ = id => document.getElementById(id);
@@ -150,6 +150,7 @@ function render() {
   ecartMax = rows[k.rapide].c.eur - Math.min(...rows.map(x => x.c.eur));
   const rapide = rows[k.rapide], best = rows[k.choix], sugg = k.suggestion >= 0 ? rows[k.suggestion] : null, t0 = rapide.r.min;
   choixId = best.id;
+  bulles = new Map(rows.map(x => [x.id, `${parts(x.c).tot} € · ${fmtT(x.r.min)}`]));   // étiquette sur la carte
   const numero = new Map([...k.numeros].map(([j, n]) => [rows[j].id, n]));   // ne change pas avec la pilule
   const avant = x => [...utiles].reverse().find(u => u.r.min <= x.r.min) || utiles[0];   // trajet de l'escalier juste avant
   // Les trajets montrés se nomment par leur ville repère la plus distinctive (« par Saumur ») ; « Trajet N » sinon.
@@ -265,6 +266,7 @@ ${anneau(best.c, rapide.c.eur, { etiquette, taille: 88 })}</div>
 // ---------- Carte : fond OpenStreetMap (Leaflet, copié dans vendor/leaflet) ----------
 let domMap = new Set();     // identifiants des variantes intermédiaires
 let masques = new Set();   // identifiants des trajets sans intérêt : hors de la liste, en pointillés sur la carte
+let bulles = new Map();   // prix et durée de chaque trajet, pour l'étiquette du trajet mis en avant
 let choixId = -1;          // identifiant de « ton choix »
 let seq = 0;               // prochain identifiant de trajet (remis à zéro à chaque recherche)
 let carte = null, calque = null, cadrage = '';
@@ -299,6 +301,9 @@ function draw() {
     const i = r.id, cache = domMap.has(i) && !voirDomines, enAvant = i === focus;
     const pts = allege(r.pts), opacite = enAvant ? 1 : cache || hot !== -1 ? 0.25 : 0.6;
     if (enAvant) L.polyline(pts, { color: '#ffffff', weight: 10, opacity: 0.9, interactive: false }).addTo(calque);   // liseré blanc
+    // Encadré sur le trajet mis en avant : son prix et sa durée, pour le repérer au milieu des autres.
+    if (enAvant && bulles.has(i)) L.tooltip({ permanent: true, direction: 'center', className: 'bulle', interactive: false })
+      .setLatLng(along(r.pts, [0.5])[0]).setContent(esc(bulles.get(i))).addTo(calque);
     L.polyline(pts, { color: COLORS[i % COLORS.length], weight: enAvant ? 6 : 4, opacity: opacite, interactive: false, lineJoin: 'round' }).addTo(calque);
     // Un trait large et invisible par-dessus, pour toucher facilement le tracé au doigt.
     if (!cache) {

@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { decode, classe, refsOf, analyse, dedupe, cost, tauxHoraire, along, DEF } from '../cost.js';
+import { decode, classe, refsOf, analyse, dedupe, cost, along, DEF } from '../cost.js';
 
 // Encodeur de polyline (inverse de decode), pour fabriquer des tracés de test.
 function encode(pts, prec = 6) {
@@ -86,14 +86,6 @@ test('cost : totaux vérifiables à la main', () => {
   near(c.toll, 100 * 0.09);    // 9 €
   near(c.eur, c.fuel + c.wear + c.toll);
   near(c.eur, 48.42);
-  near(c.mix, 48.42 + 2.5 * 15); // + 2 h 30 à 15 €/h
-});
-
-test('tauxHoraire : ce que rapporte l\'heure perdue', () => {
-  const rapide = { eur: 60, min: 300 };
-  near(tauxHoraire({ eur: 40, min: 360 }, rapide), 20);           // 20 € pour 1 h
-  assert.equal(tauxHoraire({ eur: 70, min: 360 }, rapide), null);  // plus cher et plus lent
-  assert.equal(tauxHoraire({ eur: 50, min: 300.2 }, rapide), Infinity); // moins cher sans être plus lent
 });
 
 test('dedupe : moins de 1 % d\'écart en distance ET en temps', () => {
@@ -145,13 +137,11 @@ import { marche } from '../cost.js';
 
 test('marche : minutes en plus, euros économisés, euros par minute', () => {
   const autoroute = { min: 219, eur: 106 }, mixte = { min: 227, eur: 83 }, petites = { min: 309, eur: 55 };
-  const m1 = marche(autoroute, mixte, 15);
-  near(m1.dt, 8); near(m1.de, 23); near(m1.parMin, 23 / 8); assert.equal(m1.verdict, 'oui'); // 172 €/h
-  const m2 = marche(mixte, petites, 25);
-  near(m2.dt, 82); near(m2.de, 28); assert.equal(m2.verdict, 'bof');   // 20,5 €/h : entre 12,5 et 25
-  assert.equal(marche(mixte, petites, 50).verdict, 'non');             // moins de 25 €/h
-  assert.equal(marche(mixte, petites, 15).verdict, 'oui');
-  assert.equal(marche({ min: 100, eur: 50 }, { min: 100.2, eur: 40 }, 15).parMin, Infinity); // même durée
+  const m1 = marche(autoroute, mixte);
+  near(m1.dt, 8); near(m1.de, 23); near(m1.parMin, 23 / 8);
+  const m2 = marche(mixte, petites);
+  near(m2.dt, 82); near(m2.de, 28); near(m2.parMin, 28 / 82);
+  assert.equal(marche({ min: 100, eur: 50 }, { min: 100.2, eur: 40 }).parMin, Infinity); // même durée
 });
 
 import { escalier } from '../cost.js';
@@ -264,4 +254,37 @@ test('auDessusLigne : variante moins bonne que ses deux voisins', () => {
   assert.equal(auDessusLigne(p, n, { min: 329, eur: 112 }), true);    // 1 h de plus pour 9 € : sans intérêt
   assert.equal(auDessusLigne(p, n, { min: 278, eur: 113 }), false);   // sous la ligne : vraie variante
   assert.equal(auDessusLigne(p, null, { min: 300, eur: 100 }), false); // pas de voisin suivant
+});
+
+import { classer } from '../cost.js';
+
+test('classer : escalier, variantes, trajets sans intérêt et choix', () => {
+  const t = [
+    { min: 264, eur: 121 },   // 0 : le plus rapide
+    { min: 283, eur: 114 },   // 1 : −7 € pour +19 min, marche trop petite : variante
+    { min: 354, eur: 104 },   // 2 : −17 € (14 %) : dans l'escalier
+    { min: 300, eur: 125 },   // 3 : plus cher que le plus rapide
+    { min: 360, eur: 110 },   // 4 : dominé par le 2
+    { min: 361, eur: 103.5 }, // 5 : 0,50 € de moins que le 2 pour 7 min : dérisoire
+    { min: 355, eur: 104.5 }, // 6 : 1 min et 0,50 € d'écart avec le 2 : doublon (et dominé)
+    { min: 330, eur: 112 }    // 7 : au-dessus de la ligne entre le 0 et le 2 (sans être dominé)
+  ];
+  const k = classer(t, 0);   // pressé : le plus rapide, rien au-delà
+  assert.deepEqual(k.escalier, [0, 2]);
+  assert.deepEqual(k.variantes, [1]);
+  assert.deepEqual([...k.masques].sort(), [3, 4, 5, 6, 7]);
+  assert.equal(k.rapide, 0); assert.equal(k.choix, 0); assert.equal(k.suggestion, -1); assert.deepEqual(k.promus, []);
+  // 15 min : la variante (+19 min, 1 € toutes les 2,7 min) devient la suggestion « au-delà » et monte dans l'escalier.
+  const q = classer(t, 15);
+  assert.deepEqual(q.escalier, [0, 1, 2]); assert.deepEqual(q.variantes, []);
+  assert.equal(q.choix, 0); assert.equal(q.suggestion, 1); assert.deepEqual(q.promus, [1]);
+});
+
+test('classer : changer de pilule fait monter une variante, sans renuméroter', () => {
+  const t = [{ min: 264, eur: 121 }, { min: 283, eur: 114 }, { min: 354, eur: 104 }];
+  const a = classer(t, 0), b = classer(t, 60);
+  assert.deepEqual(a.escalier, [0, 2]); assert.deepEqual(a.variantes, [1]); assert.equal(a.choix, 0);
+  assert.deepEqual(b.escalier, [0, 1, 2]); assert.deepEqual(b.variantes, []); assert.equal(b.choix, 1);
+  assert.deepEqual([...a.numeros], [...b.numeros]);   // le trajet 3 reste le trajet 3
+  assert.deepEqual([...b.numeros], [[0, 1], [2, 2], [1, 3]]);
 });

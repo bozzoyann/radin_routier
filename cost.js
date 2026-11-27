@@ -2,7 +2,7 @@
 import { TARIFS_KM } from './peages-data.js';
 
 /** Valeurs par défaut du profil et des critères (voir docs/BRIEF.md). */
-export const DEF = {prix: 2.05, usure: 0.07, cville: 7.5, croute: 5.5, cauto: 6.5, peage: 0.09, vh: 15};
+export const DEF = {prix: 2.05, usure: 0.07, cville: 7.5, croute: 5.5, cauto: 6.5, peage: 0.09};
 
 /** Sous ce seuil de vitesse moyenne (km/h), une manœuvre hors autoroute compte comme « ville ». */
 export const SEUIL_VILLE = 50;
@@ -86,7 +86,7 @@ export function dedupe(list, tol = 0.01) {
   return out;
 }
 
-/** Coût d'un trajet analysé avec les réglages `s` (voir DEF). Euros et « compromis ». */
+/** Coût d'un trajet analysé avec les réglages `s` (voir DEF), en euros, poste par poste. */
 export function cost(r, s, tarifs = TARIFS_KM) {
   const litres = (r.villeKm * s.cville + r.routeKm * s.croute + r.hwKm * s.cauto) / 100;
   // Péage : chaque tronçon payant au tarif réel de son autoroute s'il est connu (peages-data.js), sinon au tarif
@@ -105,17 +105,7 @@ export function cost(r, s, tarifs = TARIFS_KM) {
   const fuel = litres * s.prix, wear = r.km * s.usure;
   const toll = peageTroncons + Math.max(0, r.tollKm - kmTroncons) * s.peage + prixOuv;
   const eur = fuel + wear + toll;
-  return { litres, fuel, wear, toll, eur, mix: eur + r.min / 60 * s.vh, tarifsReels: [...reels] };
-}
-
-/**
- * Ce que rapporte l'heure perdue par rapport au plus rapide, en €/h.
- * null si le trajet coûte autant ou plus ; Infinity s'il n'est pas plus lent (moins de 30 s).
- */
-export function tauxHoraire(trajet, rapide) {
-  const de = rapide.eur - trajet.eur, dt = trajet.min - rapide.min;
-  if (de <= 0) return null;
-  return dt > 0.5 ? de / (dt / 60) : Infinity;
+  return { litres, fuel, wear, toll, eur, tarifsReels: [...reels] };
 }
 
 /** Points situés à des fractions données de la longueur du tracé (pour les points de passage). */
@@ -169,16 +159,12 @@ export function domines(items) {
 
 /**
  * Une marche de l'escalier : passer du trajet `haut` (plus rapide) au trajet `bas` (moins cher).
- * Renvoie les minutes en plus, les euros économisés, les euros gagnés par minute en plus
- * et un verdict par rapport au seuil de l'utilisateur (€ à économiser pour 1 h de route en plus) :
- * 'oui' si la minute est payée au moins au seuil, 'bof' à partir de la moitié, 'non' en dessous.
+ * Renvoie les minutes en plus, les euros économisés et les euros gagnés par minute en plus
+ * (Infinity si le trajet n'est pas plus lent : moins de 30 s d'écart).
  */
-export function marche(haut, bas, seuil) {
+export function marche(haut, bas) {
   const dt = bas.min - haut.min, de = haut.eur - bas.eur;
-  const parMin = dt > 0.5 ? de / dt : Infinity;
-  const parHeure = parMin * 60;
-  const verdict = parHeure >= seuil ? 'oui' : parHeure >= seuil / 2 ? 'bof' : 'non';
-  return { dt, de, parMin, verdict };
+  return { dt, de, parMin: dt > 0.5 ? de / dt : Infinity };
 }
 
 /** Une marche doit faire économiser au moins cette part du prix du trajet d'où elle part. */
@@ -274,4 +260,42 @@ export function choixLimite(items, limite) {
 export function auDessusLigne(p, n, x) {
   if (!n || n.min <= p.min) return false;
   return x.eur > p.eur + (n.eur - p.eur) * (x.min - p.min) / (n.min - p.min);
+}
+
+/**
+ * Range les trajets pour l'affichage. `items` : [{min, eur}] ; `limite` : minutes en plus acceptées.
+ *  - l'escalier (voir escalier) ;
+ *  - les variantes intermédiaires, montrées à la demande ;
+ *  - les trajets sans intérêt, seulement en pointillés sur la carte : plus chers que le plus rapide,
+ *    dominés, dérisoires (moins de 1 € gagné pour plus de 5 min perdues par rapport au trajet de l'escalier
+ *    juste plus rapide), doublons (moins de 2 min d'écart avec un trajet de l'escalier pas plus cher)
+ *    ou au-dessus de la ligne qui relie leurs deux voisins de l'escalier (voir auDessusLigne) ;
+ *  - le choix et la suggestion (voir choixLimite), variantes comprises : une variante retenue
+ *    « monte » dans l'escalier (`promus`).
+ * Les numéros des trajets (`numeros` : indice → n°) ne dépendent pas de la limite : changer de pilule
+ * ne renumérote rien. Tous les indices renvoyés sont ceux de `items`.
+ */
+export function classer(items, limite = LIMITE_DEF) {
+  const parTemps = (a, b) => items[a].min - items[b].min;
+  const dom = domines(items);
+  const esc = escalier(items).sort(parTemps);
+  const autres = items.map((_, i) => i).filter(i => !esc.includes(i)).sort(parTemps);
+  const avant = i => [...esc].reverse().find(j => items[j].min <= items[i].min) ?? esc[0];
+  const prixRapide = items[esc[0]].eur;
+  const derisoire = i => { const r = avant(i); return items[r].eur - items[i].eur < 1 && items[i].min - items[r].min > 5; };
+  const doublon = i => esc.some(j => Math.abs(items[j].min - items[i].min) < 2 && items[j].eur <= items[i].eur);
+  const auDessus = i => { const p = avant(i), n = esc[esc.indexOf(p) + 1]; return auDessusLigne(items[p], n == null ? null : items[n], items[i]); };
+  const masques = autres.filter(i => items[i].eur >= prixRapide || dom.has(i) || derisoire(i) || doublon(i) || auDessus(i));
+  const variantes = autres.filter(i => !masques.includes(i));
+  const numeros = new Map([...esc, ...variantes, ...masques].map((i, k) => [i, k + 1]));
+  const cands = [...esc, ...variantes].sort(parTemps);
+  const cl = choixLimite(cands.map(i => items[i]), limite);
+  const choix = cands[cl.choix], suggestion = cl.suggestion >= 0 ? cands[cl.suggestion] : -1;
+  const promus = [choix, suggestion].filter(i => i >= 0 && variantes.includes(i));
+  return {
+    rapide: esc[0],
+    escalier: [...esc, ...promus].sort(parTemps),
+    variantes: variantes.filter(i => !promus.includes(i)),
+    masques, choix, suggestion, promus, numeros
+  };
 }

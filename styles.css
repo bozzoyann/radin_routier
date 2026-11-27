@@ -206,6 +206,7 @@ body.resultats .leaflet-bottom{bottom:24px}
 .tr.choisi .repart-dt{background:var(--surf);border-radius:12px;padding:10px 12px}
 .tr.choisi .dt .repart-dt p,.tr.choisi .dt .repart-dt p b{color:var(--ink)}
 .actions{display:flex;gap:10px}
+.actions .partage{width:48px;height:48px;border-radius:14px}
 .marge{margin-left:auto;font-size:15px}.marge b{font:700 20px "Barlow Semi Condensed",sans-serif;color:var(--vert)}
 .pro[hidden]{display:none}.pro{display:flex;flex-direction:column;gap:6px}
 .actions .maps{flex-grow:1;min-height:48px;border-radius:14px;background:var(--bleu);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:600;text-decoration:none}

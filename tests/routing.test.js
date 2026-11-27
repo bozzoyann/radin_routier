@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { parseLatLon, routeUrl, route, geocode, PROFILES, VALHALLA } from '../routing.js';
+import { parseLatLon, routeUrl, route, geocode, PROFILES, VALHALLA, lienTrajet, lireTrajet, lieuPourLien } from '../routing.js';
 
 test('parseLatLon : coordonnées saisies à la main', () => {
   assert.deepEqual(parseLatLon(' 43.6, 1.44 '), { lat: 43.6, lon: 1.44, name: '43.6, 1.44' });
@@ -73,4 +73,19 @@ test('lieu : département retrouvé sans code postal (ville entière)', () => {
   assert.equal(lieu(f({ name: 'Paris', state: 'Paris', country: 'France' })).name, 'Paris (75)');
   assert.equal(lieu(f({ name: 'Nulle-part', country: 'France' })).name, 'Nulle-part');
   assert.equal(lieu(f({ name: 'Genève', postcode: '1201', country: 'Suisse' })).name, 'Genève'); // pas de faux département
+});
+
+test('liens de partage : fabriquer, relire, nettoyer les lieux', () => {
+  const lien = lienTrajet('https://exemple.fr/radin/', 'Place du Capitole, Toulouse', 'Lyon', 60);
+  assert.equal(lien, 'https://exemple.fr/radin/?de=Place+du+Capitole%2C+Toulouse&a=Lyon&temps=60');
+  assert.deepEqual(lireTrajet(new URL(lien).search), { de: 'Place du Capitole, Toulouse', a: 'Lyon', limite: 60 });
+  assert.deepEqual(lireTrajet('?de=Rouen&a=Paris&temps=inf'), { de: 'Rouen', a: 'Paris', limite: Infinity });
+  assert.deepEqual(lireTrajet('?de=Rouen&a=Paris'), { de: 'Rouen', a: 'Paris', limite: null });
+  assert.deepEqual(lireTrajet('?de=Rouen&a=Paris&temps=abc'), { de: 'Rouen', a: 'Paris', limite: null });
+  assert.equal(lireTrajet('?de=Rouen'), null);
+  assert.equal(lireTrajet(''), null);
+  assert.equal(lieuPourLien(null, 'Lyon (69)'), 'Lyon');
+  assert.equal(lieuPourLien(null, 'Ajaccio (2A)'), 'Ajaccio');
+  assert.equal(lieuPourLien(null, 'Place Bellecour'), 'Place Bellecour');
+  assert.equal(lieuPourLien({ name: 'Ma position', lat: 45.123456, lon: 4.987654 }, 'Ma position'), '45.123,4.988');
 });

@@ -89,3 +89,26 @@ export async function route(a, b, prof, fetchFn = fetch) {
   if (!r.ok || !d.trip) throw new Error(d.error || `erreur ${r.status}`);
   return [d.trip, ...(d.alternates || []).map(x => x.trip)];
 }
+
+/** Lien de partage d'un trajet : …?de=…&a=…&temps=… (temps : minutes en plus acceptées, « inf » : peu importe). */
+export function lienTrajet(base, de, a, limite) {
+  return `${base}?${new URLSearchParams({ de, a, temps: isFinite(limite) ? String(limite) : 'inf' })}`;
+}
+
+/** Lit un lien de partage (la partie « ?… » de l'adresse). Renvoie {de, a, limite} (limite : null si absente), ou null. */
+export function lireTrajet(search) {
+  const q = new URLSearchParams(search), de = (q.get('de') || '').trim(), a = (q.get('a') || '').trim();
+  if (!de || !a) return null;
+  const t = q.get('temps');
+  const limite = t === 'inf' ? Infinity : t !== null && t !== '' && Number.isFinite(+t) && +t >= 0 ? +t : null;
+  return { de, a, limite };
+}
+
+/**
+ * Le texte d'un lieu dans un lien : sans le département ajouté à l'affichage (« Lyon (69) » → « Lyon ») ;
+ * « Ma position » devient des coordonnées arrondies à 100 m environ (3 décimales).
+ */
+export function lieuPourLien(l, texte) {
+  if (l && l.name === 'Ma position') return `${l.lat.toFixed(3)},${l.lon.toFixed(3)}`;
+  return String(texte).replace(/\s*\((\d{2}|2A|2B)\)\s*$/, '');
+}

@@ -1,6 +1,6 @@
 // Interface : saisie, réglages, liste des trajets, carte schématique, exports.
 import { DEF, USURE_DEF, usureParKm, analyse, dedupe, cost, along, marche, classer, LIMITE_DEF, margePro } from './cost.js';
-import { PROFILES, DELAI_VALHALLA, geocode, route, suggest } from './routing.js';
+import { PROFILES, DELAI_VALHALLA, geocode, route, suggest, lienTrajet, lireTrajet, lieuPourLien } from './routing.js';
 import { candidats, reglagesMixte, joindre } from './mixtes.js';
 import { villesTraversees, villesEtapes } from './villes.js';
 import { planExploration, coutPlan, produit, assembler, cleMorceau, RAPIDE, LIBRE } from './explore.js';
@@ -9,7 +9,7 @@ import { TARIFS_KM } from './peages-data.js';
 import { prixDuJour } from './carburant.js';
 
 /** Version affichée en haut de la page : à augmenter à chaque modification publiée. */
-export const VERSION = '1.24.0';
+export const VERSION = '1.25.0';
 export const VERSION_DATE = '27/11/2026';
 
 const $ = id => document.getElementById(id);
@@ -233,7 +233,7 @@ ${r.mixte ? `<p>${esc(r.mixte.texte)}</p>` : ''}<div class="repart-dt">${anneau(
 <div class="ligne"><span class="prix">${pb.tot} €</span><span class="duree">${fmtT(best.r.min)}</span></div>${ecart}</div>
 ${anneau(best.c, rapide.c.eur, { etiquette })}</div>
 <div class="repart" aria-hidden="true"><span><i class="pt pt-conso"></i>Conso <b>${pb.conso} €</b></span><span><i class="pt pt-usure"></i>Usure <b>${pb.usure} €</b></span>${pb.peage >= 1 ? `<span><i class="pt pt-peage"></i>Péage <b>${pb.peage} €</b></span>` : `<span>${s.rembourse && best.c.toll >= 0.5 ? 'Péage remboursé' : 'Sans péage'}</span>`}${eco >= 1 ? `<span><i class="pt pt-eco"></i>Économie <b>${eco} €</b></span>` : ''}</div>`;
-  synth += `<div class="actions"><a class="maps" href="${gmaps(best.r)}" target="_blank" rel="noopener">Ouvrir dans Maps</a></div>`;
+  synth += `<div class="actions"><a class="maps" href="${gmaps(best.r)}" target="_blank" rel="noopener">Ouvrir dans Maps</a><button type="button" class="icone partage" id="partage" aria-label="Partager ce trajet"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 13v6a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-6M12 3v12M7 8l5-5 5 5"/></svg></button></div>`;
   if (sugg) synth += `<div class="sep"></div><div class="ligne"><span class="tag">Au-delà</span><button type="button" class="sel droite" data-sel="${sugg.id}">Trajet ${numero.get(sugg.id)} · −${ecartE(best.c.eur, sugg.c.eur)} € pour +${fmtT(sugg.r.min - best.r.min)}</button></div>`;
   if (s.rembourse) {
     // Déplacement pro : note de frais (IK sur la distance du plus rapide + péage) moins le coût réel.
@@ -645,13 +645,35 @@ autocompletion('from'); autocompletion('to');
 const lieuDe = id => (choix[id] && choix[id].name === $(id).value ? Promise.resolve(choix[id]) : geocode($(id).value));
 
 chargerReglages();
+
+// ---------- Liens de partage : …?de=…&a=…&temps=… remplit le trajet et lance la recherche ----------
+function lienDuTrajet() {
+  return lienTrajet(location.origin + location.pathname, lieuPourLien(choix.from, $('from').value), lieuPourLien(choix.to, $('to').value), limite);
+}
+async function partager() {
+  const url = lienDuTrajet(), st = $('st');
+  try {
+    if (navigator.share) { await navigator.share({ title: `Radin routier : ${ends.a.name} → ${ends.b.name}`, url }); return; }
+  } catch (e) { if (e.name === 'AbortError') return; }   // partage annulé : rien à faire
+  try { await navigator.clipboard.writeText(url); st.className = ''; st.textContent = 'Lien copié.'; setTimeout(() => { if (st.textContent === 'Lien copié.') st.textContent = ''; }, 3000); }
+  catch (e) { prompt('Copie ce lien :', url); }
+}
+const lien = lireTrajet(location.search);
 const od = store.get('vpt-od');
 if (od) { $('from').value = od.from || ''; $('to').value = od.to || ''; choix = { from: od.cfrom || null, to: od.cto || null }; }
 $('f').addEventListener('submit', run);
+if (lien) {
+  // Lien reçu : on remplit, on nettoie l'adresse (recharger la page ne relance pas tout), puis on lance la recherche.
+  $('from').value = lien.de; $('to').value = lien.a; choix = { from: null, to: null };
+  if (lien.limite !== null) limite = lien.limite;
+  history.replaceState(null, '', location.pathname);
+  $('f').requestSubmit();
+}
 $('swap').addEventListener('click', () => { const t = $('from').value; $('from').value = $('to').value; $('to').value = t; choix = { from: choix.to, to: choix.from }; });
 $('list').addEventListener('click', e => {
   if (e.target.closest('#vdom')) { voirDomines = !voirDomines; render(); return; }
   if (e.target.closest('#explo')) { explorer(); return; }
+  if (e.target.closest('#partage')) { partager(); return; }
   if (e.target.closest('#stopx')) { expl.stop = true; return; }
   const sel = e.target.closest('[data-sel]');
   if (sel) {

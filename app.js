@@ -3,13 +3,13 @@ import { DEF, USURE_DEF, usureParKm, analyse, dedupe, cost, along, marche, class
 import { PROFILES, DELAI_VALHALLA, geocode, route, suggest, lienMaps, lienTrajet, lireTrajet, lieuPourLien } from './routing.js';
 import { candidats, reglagesMixte, joindre, pointsDePassage } from './mixtes.js';
 import { villesTraversees, villesEtapes, nomsTrajets } from './villes.js';
-import { planExploration, coutPlan, produit, assembler, cleMorceau, RAPIDE, LIBRE } from './explore.js';
+import { planExploration, coutPlan, produit, assembler, cleMorceau, RAPIDE, LIBRE, vautExplorer } from './explore.js';
 import { ouvragesTraverses } from './ouvrages.js';
 import { TARIFS_KM } from './peages-data.js';
 import { prixDuJour } from './carburant.js';
 
 /** Version affichée en haut de la page : à augmenter à chaque modification publiée. */
-export const VERSION = '1.31.0';
+export const VERSION = '1.32.0';
 export const VERSION_DATE = '27/11/2026';
 
 const $ = id => document.getElementById(id);
@@ -32,6 +32,7 @@ let prices = {};               // prix du litre par carburant, partagé entre le
 let profils = null;            // {list: [{id, nom, carbu, usure, cville, croute, cauto, wiz}], actif}
 let choix = { from: null, to: null };   // lieux choisis dans les suggestions
 const suggTimer = {};                   // délais de frappe en cours, par champ
+let ecartMax = 0;   // écart de prix entre le plus rapide et le moins cher (pour « Explorer encore »)
 let routes = [], ends = null, hot = -1, voirDomines = false;
 let trouves = [];                 // tous les trajets calculés pour la recherche en cours
 let expl = { etat: 'aucun' };     // exploration approfondie : aucun, pret, encours, fini
@@ -146,6 +147,7 @@ function render() {
   for (const x of autres) x.dom = true;
   masques = new Set(k.masques.map(j => rows[j].id));
   domMap = new Set(autres.map(x => x.id));
+  ecartMax = rows[k.rapide].c.eur - Math.min(...rows.map(x => x.c.eur));
   const rapide = rows[k.rapide], best = rows[k.choix], sugg = k.suggestion >= 0 ? rows[k.suggestion] : null, t0 = rapide.r.min;
   choixId = best.id;
   const numero = new Map([...k.numeros].map(([j, n]) => [rows[j].id, n]));   // ne change pas avec la pilule
@@ -367,7 +369,7 @@ function blocAvancement(nouveaux = derniersNeufs) {
     } else {
       const n = expl.etat === 'pret' ? coutPlan(planExploration(trouves, ends.a, ends.b)) : 0;
       h = `<div class="avance-txt"><span>${compte} trajets comparés en ${rech.sec} s${rech.echecs ? ` · ${rech.echecs} échec${rech.echecs > 1 ? 's' : ''}` : ''}</span>`
-        + (n ? `<button type="button" class="lien" id="explo">${LOUPE}Explorer encore <small>≈ ${String(Math.max(0.5, Math.round(n * 1.5 / 30) / 2)).replace('.', ',')} min</small></button>` : '') + '</div>';
+        + (n ? `<button type="button" class="${vautExplorer(ecartMax, compte) ? 'pilule-explo' : 'lien'}" id="explo">${LOUPE}Explorer encore <small>≈ ${String(Math.max(0.5, Math.round(n * 1.5 / 30) / 2)).replace('.', ',')} min</small></button>` : '') + '</div>';
     }
   }
   return `<div id="avancement">${h}</div>`;

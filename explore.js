@@ -68,3 +68,8 @@ export function assembler(parts, comb) {
   t.explore = true;
   return t;
 }
+
+/** « Explorer encore » mis en avant (bouton plein) quand il reste sûrement des économies : gros écart entre
+ *  le plus rapide et le moins cher, et peu de trajets comparés. Sinon un lien discret. */
+export const EXPLO_ECART = 20, EXPLO_PEU = 10;
+export function vautExplorer(ecartEur, compte) { return ecartEur >= EXPLO_ECART && compte < EXPLO_PEU; }

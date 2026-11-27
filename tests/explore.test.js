@@ -45,3 +45,10 @@ test('cleMorceau : identique pour le même morceau', () => {
   assert.equal(cleMorceau(a, b, LIBRE), cleMorceau({ lat: 0.00001, lon: 0 }, b, LIBRE));
   assert.notEqual(cleMorceau(a, b, LIBRE), cleMorceau(a, b, RAPIDE));
 });
+
+test('vautExplorer : mis en avant si gros écart et peu de trajets', async () => {
+  const { vautExplorer } = await import('../explore.js');
+  assert.equal(vautExplorer(64, 7), true);
+  assert.equal(vautExplorer(12, 7), false);
+  assert.equal(vautExplorer(64, 14), false);
+});

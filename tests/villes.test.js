@@ -54,3 +54,17 @@ test('villesEtapes : grandes villes au milieu des trajets, espacées', () => {
   assert.deepEqual(villesEtapes([{ pts: long }], { villes, n: 1 }).map(v => v.nom), ['Milieu']);
   assert.deepEqual(villesEtapes([], { villes }), []);
 });
+
+import { nomsTrajets } from '../villes.js';
+
+test('nomsTrajets : la ville la plus distinctive, puis une 2e ville, puis un numéro', () => {
+  assert.deepEqual(nomsTrajets([['Carcassonne', 'Montpellier', 'Valence'], ['Albi', 'Clermont-Ferrand'], ['Albi', 'Mende', 'Saint-Étienne']]),
+    ['par Carcassonne', 'par Clermont-Ferrand', 'par Mende']);
+  assert.deepEqual(nomsTrajets([['Tours', 'Saumur'], ['Tours'], []]), ['par Saumur', 'par Tours', '']);
+  // Même ville la plus rare pour deux trajets : on ajoute leur 2e ville.
+  assert.deepEqual(nomsTrajets([['Albi', 'Rodez'], ['Albi', 'Rodez', 'Millau'], ['Albi', 'Millau']]), ['par Rodez · Albi', 'par Rodez · Millau', 'par Millau']);
+  // Mêmes villes dans un autre ordre : la ville prise suit l'ordre du trajet, les noms restent distincts.
+  assert.deepEqual(nomsTrajets([['Albi', 'Rodez'], ['Rodez', 'Albi']]), ['par Albi', 'par Rodez']);
+  // Une seule ville en commun et rien d'autre : un numéro.
+  assert.deepEqual(nomsTrajets([['Albi'], ['Albi']]), ['par Albi', 'par Albi (2)']);
+});

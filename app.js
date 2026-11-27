@@ -2,14 +2,14 @@
 import { DEF, USURE_DEF, usureParKm, analyse, dedupe, cost, along, marche, classer, LIMITE_DEF, margePro } from './cost.js';
 import { PROFILES, DELAI_VALHALLA, geocode, route, suggest, lienTrajet, lireTrajet, lieuPourLien } from './routing.js';
 import { candidats, reglagesMixte, joindre } from './mixtes.js';
-import { villesTraversees, villesEtapes } from './villes.js';
+import { villesTraversees, villesEtapes, nomsTrajets } from './villes.js';
 import { planExploration, coutPlan, produit, assembler, cleMorceau, RAPIDE, LIBRE } from './explore.js';
 import { ouvragesTraverses } from './ouvrages.js';
 import { TARIFS_KM } from './peages-data.js';
 import { prixDuJour } from './carburant.js';
 
 /** Version affichée en haut de la page : à augmenter à chaque modification publiée. */
-export const VERSION = '1.27.0';
+export const VERSION = '1.28.0';
 export const VERSION_DATE = '27/11/2026';
 
 const $ = id => document.getElementById(id);
@@ -142,6 +142,11 @@ function render() {
   choixId = best.id;
   const numero = new Map([...k.numeros].map(([j, n]) => [rows[j].id, n]));   // ne change pas avec la pilule
   const avant = x => [...utiles].reverse().find(u => u.r.min <= x.r.min) || utiles[0];   // trajet de l'escalier juste avant
+  // Les trajets montrés se nomment par leur ville repère la plus distinctive (« par Saumur ») ; « Trajet N » sinon.
+  const montres = [...utiles, ...autres];
+  for (const x of montres) if (!x.r.villes) x.r.villes = villesTraversees(x.r.pts);   // calculé une fois par trajet
+  const noms = new Map(nomsTrajets(montres.map(x => x.r.villes)).map((n, j) => [montres[j].id, n]));
+  const nom = x => noms.get(x.id) || `Trajet ${numero.get(x.id)}`;
   for (const b of document.querySelectorAll('#lim button')) b.setAttribute('aria-pressed', String(b.dataset.l === (isFinite(limite) ? String(limite) : 'inf')));
 
   const PIC = (d, cls = 'pic') => `<svg class="${cls}" viewBox="0 0 24 24" aria-hidden="true"><path d="${d}"/></svg>`;
@@ -155,7 +160,6 @@ function render() {
       const prec = avant({ r }), de = ecartE(prec.c.eur, c.eur);
       ecartV = `<span class="ecart-v">+${fmtT(r.min - prec.r.min)} · ${de >= 1 ? `−${de} €` : 'même prix'}</span>`;
     }
-    if (!r.villes) r.villes = villesTraversees(r.pts);   // calculé une fois par trajet
     const via = r.villes.length ? `<span class="via">${r.villes.map(esc).join(' · ')}</span>` : '';
     const refs = r.refs.slice(0, 3).map(x => `<span class="c${x[0] === 'D' ? ' cD' : ''}">${esc(x)}</span>`).join('');
     const payants = r.ouvrages.filter(o => !o.gratuit);
@@ -174,7 +178,7 @@ function render() {
     return `<li class="${cls}" data-i="${id}" style="--rc:${couleur}"${estDomine && !voirDomines ? ' hidden' : ''}>
 <div class="rail"><span class="point" style="background:${couleur}"></span></div>
 <div class="corps">
-<div class="tete-tr"><span class="prix">${fmtE(c.eur)}</span><span class="duree">${fmtT(r.min)}</span><span class="km">· ${Math.round(r.km)} km</span><span class="role">${role || `Trajet ${numero.get(id)}`}</span></div>
+<div class="tete-tr"><span class="prix">${fmtE(c.eur)}</span><span class="duree">${fmtT(r.min)}</span><span class="km">· ${Math.round(r.km)} km</span><span class="role">${role || nom({ id })}</span></div>
 ${jauge(c, rapide.c.eur)}
 <div class="refs">${refs}${via}<span class="fin">${ecartV}<svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></span></div>
 <div class="act">${best.id === id ? '' : `<a class="maps" href="${gmaps(r)}" target="_blank" rel="noopener">Ouvrir dans Maps</a>`}
@@ -184,7 +188,7 @@ ${r.mixte ? `<p>${esc(r.mixte.texte)}</p>` : ''}<div class="repart-dt">${anneau(
 <p><i class="pt pt-usure"></i>Usure <b>${p.usure} €</b> <small>(${Math.round(r.km)} km)</small></p>
 <p>${peage}</p>
 <p>Total <b>${p.tot} €</b>${eco >= 1 ? ` · ${eco} € de moins que le plus rapide` : ''}</p>${s.rembourse ? (m => `<p>Ta marge <b>${m.marge >= 0 ? '+' : '−'}${Math.abs(m.marge)} €</b></p>`)(margePro(c, s.ik, rapide.r.km)) : ''}</div></div>${gratuits ? `<p>${gratuits}</p>` : ''}
-<p>${Math.round(r.km)} km : autoroute ${Math.round(r.hwKm)} · route ${Math.round(r.routeKm)} · ville ${Math.round(r.villeKm)} · trajet ${numero.get(id)}</p>
+<p>${Math.round(r.km)} km : autoroute ${Math.round(r.hwKm)} · route ${Math.round(r.routeKm)} · ville ${Math.round(r.villeKm)}</p>
 <button type="button" class="gpx" data-gpx="${id}" data-n="${numero.get(id)}">Télécharger le GPX</button>
 </details></div>
 </div>
@@ -196,7 +200,7 @@ ${r.mixte ? `<p>${esc(r.mixte.texte)}</p>` : ''}<div class="repart-dt">${anneau(
     const m = marche({ min: haut.r.min, eur: haut.c.eur }, { min: bas.r.min, eur: bas.c.eur });
     const cls = bas.r.min <= best.r.min ? 'y' : sugg && bas.r.min <= sugg.r.min ? 'm' : 'n';
     const temps = m.dt > 0.5 ? `+${fmtT(m.dt)}` : 'même durée';
-    return `<li class="marche ${cls}" aria-label="Du trajet ${numero.get(haut.id)} au trajet ${numero.get(bas.id)}"><span class="ecart">${temps} · −${ecartE(haut.c.eur, bas.c.eur)} €<span>${tauxTxt(m.dt, m.de)}</span></span></li>`;
+    return `<li class="marche ${cls}" aria-label="De ${esc(nom(haut))} à ${esc(nom(bas))}"><span class="ecart">${temps} · −${ecartE(haut.c.eur, bas.c.eur)} €<span>${tauxTxt(m.dt, m.de)}</span></span></li>`;
   };
 
   // L'escalier, avec les variantes intermédiaires en retrait à leur place (si dépliées).
@@ -210,8 +214,12 @@ ${r.mixte ? `<p>${esc(r.mixte.texte)}</p>` : ''}<div class="repart-dt">${anneau(
     html += carte(x);
     html += autres.filter(v => avant(v) === x && !versSuivant(v)).map(v => carte(v)).join('');
   });
-  const nDom = autres.length;
-  if (nDom) html += `<li class="plus"><button type="button" id="vdom" aria-expanded="${voirDomines}">${PIC('M6 9l6 6 6-6')}${voirDomines ? 'Masquer' : 'Voir'} ${nDom > 1 ? `les ${nDom} variantes intermédiaires` : 'la variante intermédiaire'}</button></li>`;
+  // Les autres trajets (variantes et trajets sans intérêt) : un seul repli, et rien sur la carte tant qu'il est fermé.
+  const nAutres = autres.length + masques.size;
+  if (nAutres) {
+    html += `<li class="plus"><button type="button" id="vdom" aria-expanded="${voirDomines}">${PIC('M6 9l6 6 6-6')}${voirDomines ? 'Masquer les autres trajets' : `Voir les autres trajets (${nAutres})`}</button></li>`;
+    if (voirDomines && masques.size) html += `<li class="info-autres">${masques.size > 1 ? `${masques.size} trajets sans intérêt` : '1 trajet sans intérêt'} (plus lents et pas moins chers) : en pointillés sur la carte.</li>`;
+  }
 
   // Synthèse : en tête du panneau. Ton choix, au-delà, avancement et exploration, compteur.
   // Les trouvailles de l'exploration se comptent sans les variantes montées pour la pilule : changer de pilule
@@ -221,27 +229,24 @@ ${r.mixte ? `<p>${esc(r.mixte.texte)}</p>` : ''}<div class="repart-dt">${anneau(
   let synth = '';
   if (neufs.length) {
     const top = [best, sugg].find(x => x && x.r.explore) || neufs.reduce((p, q) => q.c.eur < p.c.eur ? q : p);
-    synth += `<div class="ligne"><span class="neuf">Nouveau</span><button type="button" class="sel" data-sel="${top.id}">L'exploration a trouvé ${neufs.length > 1 ? `${neufs.length} trajets` : 'un trajet'} : trajet ${numero.get(top.id)}${top === best ? ', ton choix' : ''}</button></div>`;
+    synth += `<div class="ligne"><span class="neuf">Nouveau</span><button type="button" class="sel" data-sel="${top.id}">L'exploration a trouvé ${neufs.length > 1 ? `${neufs.length} trajets` : 'un trajet'} : ${esc(nom(top))}${top === best ? ', ton choix' : ''}</button></div>`;
     if (neufs.length > dejaFete) { dejaFete = neufs.length; pluieDeBillets(); }
   }
   const pb = parts(best.c), eco = ecartE(rapide.c.eur, best.c.eur);
   const ecart = best === rapide
     ? `<div class="ecart">${limite === 0 ? 'Aucune minute de plus acceptée' : `Aucun détour rentable${isFinite(limite) ? ` en ${fmtT(limite)} de plus` : ''}`}</div>`
     : `<div class="ecart">−${eco} € pour +${fmtT(best.r.min - t0)}</div>`;
+  const mp = s.rembourse ? margePro(best.c, s.ik, rapide.r.km) : null;   // déplacement pro : note de frais − coût réel
+  const marge = mp ? `<span class="marge">Marge pro <b>${mp.marge >= 0 ? '+' : '−'}${Math.abs(mp.marge)} €</b></span>` : '';
   const etiquette = `Ton choix coûte ${pb.tot} € : conso ${pb.conso} €, usure ${pb.usure} €, ${pb.peage >= 1 ? `péage ${pb.peage} €` : 'sans péage'}${eco >= 1 ? `, et tu économises ${eco} € par rapport au plus rapide` : ''}.`;
   synth += `<div class="choix-tete"><div class="choix-g">
-<div class="ligne"><span class="tag">${best === rapide ? 'Ton choix · le plus rapide' : 'Ton choix'}</span><button type="button" class="sel droite" data-sel="${best.id}">Trajet ${numero.get(best.id)}</button></div>
-<div class="ligne"><span class="prix">${pb.tot} €</span><span class="duree">${fmtT(best.r.min)}</span></div>${ecart}</div>
-${anneau(best.c, rapide.c.eur, { etiquette })}</div>
+<div class="ligne"><span class="tag">${best === rapide ? 'Ton choix · le plus rapide' : 'Ton choix'}</span><button type="button" class="sel droite" data-sel="${best.id}">${esc(nom(best))}</button></div>
+<div class="ligne"><span class="prix">${pb.tot} €</span><span class="duree">${fmtT(best.r.min)}</span></div><div class="chips">${ecart}${marge}</div></div>
+${anneau(best.c, rapide.c.eur, { etiquette, taille: 88 })}</div>
 <div class="repart" aria-hidden="true"><span><i class="pt pt-conso"></i>Conso <b>${pb.conso} €</b></span><span><i class="pt pt-usure"></i>Usure <b>${pb.usure} €</b></span>${pb.peage >= 1 ? `<span><i class="pt pt-peage"></i>Péage <b>${pb.peage} €</b></span>` : `<span>${s.rembourse && best.c.toll >= 0.5 ? 'Péage remboursé' : 'Sans péage'}</span>`}${eco >= 1 ? `<span><i class="pt pt-eco"></i>Économie <b>${eco} €</b></span>` : ''}</div>`;
   synth += `<div class="actions"><a class="maps" href="${gmaps(best.r)}" target="_blank" rel="noopener">Ouvrir dans Maps</a><button type="button" class="icone partage" id="partage" aria-label="Partager ce trajet"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 13v6a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-6M12 3v12M7 8l5-5 5 5"/></svg></button></div>`;
-  if (sugg) synth += `<div class="sep"></div><div class="ligne"><span class="tag">Au-delà</span><button type="button" class="sel droite" data-sel="${sugg.id}">Trajet ${numero.get(sugg.id)} · −${ecartE(best.c.eur, sugg.c.eur)} € pour +${fmtT(sugg.r.min - best.r.min)}</button></div>`;
-  if (s.rembourse) {
-    // Déplacement pro : note de frais (IK sur la distance du plus rapide + péage) moins le coût réel.
-    const m = margePro(best.c, s.ik, rapide.r.km);
-    synth += `<div class="sep"></div><div class="ligne"><span class="tag">Pro</span><span class="marge">Ta marge <b>${m.marge >= 0 ? '+' : '−'}${Math.abs(m.marge)} €</b></span></div>`;
-  }
-  compte = { n: routes.length, pointilles: masques.size ? ` · ${masques.size} en pointillés sur la carte` : '' };
+  if (sugg) synth += `<div class="sep"></div><div class="ligne"><span class="tag">Au-delà</span><button type="button" class="sel droite" data-sel="${sugg.id}">${esc(nom(sugg))} · −${ecartE(best.c.eur, sugg.c.eur)} € pour +${fmtT(sugg.r.min - best.r.min)}</button></div>`;
+  compte = routes.length;
   synth += blocAvancement(neufs.length);
   $('list').innerHTML = `<li class="synth${neufs.length ? ' bravo' : ''}">${synth}</li>` + html;
   draw();
@@ -274,10 +279,10 @@ function draw() {
   if (!carte) creerCarte();
   calque.clearLayers();
   // Trajets sans intérêt : fins pointillés gris, dessous, pour montrer tout ce qui a été exploré.
-  for (const r of routes) if (masques.has(r.id)) L.polyline(allege(r.pts), { color: '#7a808c', weight: 2, dashArray: '4 6', opacity: 0.7, interactive: false }).addTo(calque);
+  if (voirDomines) for (const r of routes) if (masques.has(r.id)) L.polyline(allege(r.pts), { color: '#7a808c', weight: 2, dashArray: '4 6', opacity: 0.7, interactive: false }).addTo(calque);
   // Le trajet mis en avant : celui que tu as touché, sinon ton choix. Dessiné en dernier, par-dessus les autres.
   const focus = hot !== -1 ? hot : choixId;
-  const visibles = routes.filter(r => !masques.has(r.id)).sort((a, b) => (a.id === focus) - (b.id === focus));
+  const visibles = routes.filter(r => !masques.has(r.id) && (voirDomines || !domMap.has(r.id))).sort((a, b) => (a.id === focus) - (b.id === focus));
   for (const r of visibles) {
     const i = r.id, cache = domMap.has(i) && !voirDomines, enAvant = i === focus;
     const pts = allege(r.pts), opacite = enAvant ? 1 : cache || hot !== -1 ? 0.25 : 0.6;
@@ -337,7 +342,7 @@ function pluieDeBillets() {
 // Avancement de la recherche puis de l'exploration : un seul bloc, en bas de la synthèse, avec barre.
 const barre = (pc, txt, bouton = '') => `<div class="avance-txt"><span>${txt}</span><span class="pc">${pc} %</span></div>
 <div class="route-barre" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pc}"><span class="trace" style="width:${pc}%"></span><span class="voiture" style="left:${pc}%"></span></div>${bouton}`;
-let compte = { n: 0, pointilles: '' };   // « 12 trajets comparés · 10 en pointillés », repris dans la ligne d'avancement
+let compte = 0;   // nombre de trajets comparés, repris dans la ligne d'avancement
 const LOUPE = '<svg class="pic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6"/><path d="M20 20l-4-4"/></svg>';
 function blocAvancement(nouveaux = derniersNeufs) {
   let h = '';
@@ -348,11 +353,11 @@ function blocAvancement(nouveaux = derniersNeufs) {
     h = barre(pc, `Exploration · ${expl.testes} trajets testés${nouveaux ? ` · ${nouveaux} nouveau${nouveaux > 1 ? 'x' : ''}` : ''}`, '<button type="button" class="contour" id="stopx">Arrêter</button>');
   } else if (rech.etat === 'fini') {
     if (expl.etat === 'fini') {
-      h = `<div class="avance-txt"><span>${compte.n} trajets comparés${compte.pointilles} · exploration${expl.stop ? ' arrêtée' : ''} : ${nouveaux ? `${nouveaux} nouveau${nouveaux > 1 ? 'x' : ''}` : 'rien de mieux'}</span></div>`;
+      h = `<div class="avance-txt"><span>${compte} trajets comparés · exploration${expl.stop ? ' arrêtée' : ''} : ${nouveaux ? `${nouveaux} nouveau${nouveaux > 1 ? 'x' : ''}` : 'rien de mieux'}</span></div>`;
     } else {
       const n = expl.etat === 'pret' ? coutPlan(planExploration(trouves, ends.a, ends.b)) : 0;
-      h = `<div class="avance-txt"><span>${compte.n} trajets comparés en ${rech.sec} s${compte.pointilles}${rech.echecs ? ` · ${rech.echecs} échec${rech.echecs > 1 ? 's' : ''}` : ''}</span></div>`
-        + (n ? `<button type="button" class="contour" id="explo">${LOUPE}Explorer encore <small>≈ ${String(Math.max(0.5, Math.round(n * 1.5 / 30) / 2)).replace('.', ',')} min</small></button>` : '');
+      h = `<div class="avance-txt"><span>${compte} trajets comparés en ${rech.sec} s${rech.echecs ? ` · ${rech.echecs} échec${rech.echecs > 1 ? 's' : ''}` : ''}</span>`
+        + (n ? `<button type="button" class="lien" id="explo">${LOUPE}Explorer encore <small>≈ ${String(Math.max(0.5, Math.round(n * 1.5 / 30) / 2)).replace('.', ',')} min</small></button>` : '') + '</div>';
     }
   }
   return `<div id="avancement">${h}</div>`;

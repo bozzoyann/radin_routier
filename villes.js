@@ -64,3 +64,20 @@ export function villesEtapes(routes, { n = 2, popMin = 50000, de = 0.3, a = 0.8,
   }
   return out.map(({ nom, lat, lon }) => ({ nom, lat, lon }));
 }
+
+/**
+ * Un nom court par trajet, tiré de ses villes repères (voir villesTraversees) : « par Saumur ». Pour chaque trajet,
+ * on prend la ville que le moins d'autres trajets traversent ; si deux trajets restent homonymes, on ajoute
+ * leur 2e ville la plus rare, puis un numéro en dernier recours. `listes` : les villes de chaque trajet
+ * ([[nom, …], …]). Renvoie un nom par trajet, '' pour un trajet sans ville repère.
+ */
+export function nomsTrajets(listes) {
+  const freq = new Map();
+  for (const l of listes) for (const v of new Set(l)) freq.set(v, (freq.get(v) || 0) + 1);
+  const rares = listes.map(l => [...new Set(l)].sort((a, b) => freq.get(a) - freq.get(b)));
+  let noms = rares.map(r => (r.length ? `par ${r[0]}` : ''));
+  const doublons = () => noms.map((n, i) => !!n && noms.some((m, j) => j !== i && m === n));
+  noms = noms.map((n, i) => (doublons()[i] && rares[i].length > 1 ? `par ${rares[i][0]} · ${rares[i][1]}` : n));
+  const d = doublons(), vus = new Map();
+  return noms.map((n, i) => { if (!d[i]) return n; const k = (vus.get(n) || 0) + 1; vus.set(n, k); return k > 1 ? `${n} (${k})` : n; });
+}

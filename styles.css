@@ -34,7 +34,7 @@ button{font-family:inherit}
 .marque{display:inline-flex;align-items:center;gap:8px;font:700 18px Inter,sans-serif;color:var(--bleu-txt)}
 .marque img{border-radius:8px}
 .ver{margin-left:auto;font-size:12px;color:var(--mut);white-space:nowrap}
-.installer{margin-left:auto;min-height:36px;border:0;border-radius:18px;background:var(--bleu);color:#fff;font:600 14px Inter,sans-serif;padding:0 14px;cursor:pointer}
+.installer{margin-left:auto;min-height:44px;border:0;border-radius:18px;background:var(--bleu);color:#fff;font:600 14px Inter,sans-serif;padding:0 14px;cursor:pointer}
 .installer[hidden]{display:none}.installer+.ver{margin-left:10px}
 
 /* Formulaire : des cartes arrondies */
@@ -126,7 +126,7 @@ legend{font-weight:600;font-size:15px;color:var(--ink);padding:0;margin-bottom:1
 .lim[hidden]{display:none}
 .reglette{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;padding:2px 2px 6px;margin:0 -2px}
 .reglette::-webkit-scrollbar{display:none}
-.reglette .etiq,.reglette button{flex:none;height:38px;padding:0 14px;border-radius:19px;background:var(--surf);box-shadow:var(--ombre-pt);display:inline-flex;align-items:center;font-size:14px;white-space:nowrap}
+.reglette .etiq,.reglette button{flex:none;height:44px;padding:0 14px;border-radius:19px;background:var(--surf);box-shadow:var(--ombre-pt);display:inline-flex;align-items:center;font-size:14px;white-space:nowrap}
 .reglette .etiq{color:var(--mut)}
 .reglette button{border:0;color:var(--ink);font-weight:500;cursor:pointer;min-width:44px;justify-content:center}
 .reglette button[aria-pressed=true]{background:var(--bleu);color:#fff;font-weight:600;box-shadow:0 2px 8px rgb(28 63 148/.35)}
@@ -185,7 +185,11 @@ body.resultats .leaflet-bottom{bottom:24px}
 .synth .ecart{align-self:flex-start;font-size:14px;font-weight:600;color:var(--vert);background:var(--vert-pale);border-radius:10px;padding:4px 10px;font-variant-numeric:tabular-nums}
 .synth .ecart span{font-weight:400;opacity:.8}
 .synth .sep{height:1px;background:var(--line)}
-.synth .sel{background:none;border:0;padding:0;color:var(--bleu-txt);font:600 14px Inter,sans-serif;cursor:pointer;text-align:left;min-height:32px}
+.synth .sel{background:none;border:0;padding:0;color:var(--bleu-txt);font:600 14px Inter,sans-serif;cursor:pointer;text-align:left;min-height:44px}
+.chips{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.chips .marge{font-size:14px;font-weight:600;color:var(--bleu-txt);background:var(--bleu-pale);border-radius:10px;padding:4px 10px;margin:0}.chips .marge b{font:inherit;color:inherit}
+.lien{margin-left:auto;min-height:44px;border:0;background:none;padding:0 0 0 8px;color:var(--bleu-txt);font:600 14px Inter,sans-serif;display:inline-flex;align-items:center;gap:6px;cursor:pointer;white-space:nowrap}.lien small{font-weight:400;color:var(--mut)}
+.info-autres{font-size:13px;color:var(--mut);padding:0 4px}
 .synth .compte{font-size:13px;color:var(--mut)}
 .synth .neuf{font-size:12px;font-weight:700;background:var(--jaune);color:#111827;border-radius:8px;padding:3px 8px}
 .synth.bravo .prix{color:var(--vert)}
@@ -220,7 +224,7 @@ body.resultats .leaflet-bottom{bottom:24px}
 
 /* Avancement : une petite route qui se trace */
 #avancement{display:flex;flex-direction:column;gap:8px}#avancement:empty{display:none}
-.avance-txt{display:flex;align-items:baseline;gap:8px;font-size:13px;color:var(--mut)}
+.avance-txt{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--mut);flex-wrap:wrap}
 .avance-txt .pc{margin-left:auto;font-weight:600;color:var(--ink);font-variant-numeric:tabular-nums}
 .route-barre{height:10px;border-radius:5px;background:var(--asphalte);position:relative;overflow:hidden}
 .route-barre .trace{position:absolute;left:0;top:4px;height:2px;background-image:repeating-linear-gradient(to right,#fff 0 10px,transparent 10px 17px);transition:width .3s}
@@ -251,11 +255,11 @@ body.resultats .leaflet-bottom{bottom:24px}
 .tr .note{margin:0;font-size:13px;color:var(--mut)}
 .tr .act{display:none;gap:8px;flex-wrap:wrap;align-items:center}
 .tr.on .act{display:flex}
-.tr .act .maps{min-height:42px;padding:0 16px;flex-grow:1;display:inline-flex;align-items:center;justify-content:center;border-radius:12px;background:var(--bleu);color:#fff;text-decoration:none;font-weight:600;font-size:15px}
+.tr .act .maps{min-height:44px;padding:0 16px;flex-grow:1;display:inline-flex;align-items:center;justify-content:center;border-radius:12px;background:var(--bleu);color:#fff;text-decoration:none;font-weight:600;font-size:15px}
 .tr .dt{flex-basis:100%}
-.tr .dt>summary{min-height:40px;display:inline-flex;align-items:center;cursor:pointer;font-size:14px;color:var(--mut)}
+.tr .dt>summary{min-height:44px;display:inline-flex;align-items:center;cursor:pointer;font-size:14px;color:var(--mut)}
 .tr .dt p{margin:4px 0;font-size:14px;color:var(--mut)}.tr .dt p b{color:var(--ink)}
-.tr .dt .gpx{min-height:40px;padding:0 14px;border:0;border-radius:12px;background:var(--champ);color:var(--ink);font:600 14px Inter,sans-serif;cursor:pointer}
+.tr .dt .gpx{min-height:44px;padding:0 14px;border:0;border-radius:12px;background:var(--champ);color:var(--ink);font:600 14px Inter,sans-serif;cursor:pointer}
 /* Le trajet choisi : une carte bleue */
 .tr.choisi .corps{background:var(--bleu);color:#fff;box-shadow:0 6px 18px rgb(28 63 148/.35)}
 .tr.choisi .point{box-shadow:0 0 0 2px #fff}

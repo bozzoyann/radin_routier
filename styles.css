@@ -49,6 +49,9 @@ form.replie .plaque{display:flex}
 form.replie .od,form.replie .go,form.replie .regl:not([open]){display:none}
 .od{padding:12px;display:grid;grid-template-columns:minmax(0,1fr) 44px minmax(0,1fr);gap:8px 10px;align-items:end}
 .ac{position:relative;display:grid;gap:4px}
+.champ{position:relative}.champ input{padding-right:48px}
+.ici{position:absolute;right:1px;top:50%;transform:translateY(-50%);width:44px;height:44px;border:0;background:none;color:var(--bleu-txt);display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0}
+.ici svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round}
 label{display:grid;gap:4px;font-size:13px;color:var(--mut)}
 input,select{font:500 16px Inter,sans-serif;color:var(--ink);background:var(--champ);border:1.5px solid transparent;border-radius:12px;padding:0 12px;min-height:46px;width:100%}
 input:focus,select:focus{border-color:var(--bleu-txt);outline:0}
@@ -279,8 +282,6 @@ body.resultats .leaflet-bottom{bottom:24px}
 .leaflet-touch .leaflet-bar a{width:44px;height:44px;line-height:44px}
 .leaflet-control-attribution{border-radius:8px 0 0 0}
 .touche{cursor:pointer}
-@media (prefers-color-scheme: dark){:root:not([data-theme=light]) .leaflet-tile-pane{filter:invert(1) hue-rotate(180deg) brightness(.9) contrast(.9)}}
-:root[data-theme=dark] .leaflet-tile-pane{filter:invert(1) hue-rotate(180deg) brightness(.9) contrast(.9)}
 
 /* Montagne de billets (trouvaille de l'exploration) : des billets dessinés, pas d'émoji */
 .fete{position:fixed;inset:0;pointer-events:none;z-index:2000;overflow:hidden;transition:opacity .6s}

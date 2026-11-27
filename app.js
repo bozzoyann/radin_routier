@@ -9,7 +9,7 @@ import { TARIFS_KM } from './peages-data.js';
 import { prixDuJour } from './carburant.js';
 
 /** Version affichée en haut de la page : à augmenter à chaque modification publiée. */
-export const VERSION = '1.21.1';
+export const VERSION = '1.22.0';
 export const VERSION_DATE = '27/11/2026';
 
 const $ = id => document.getElementById(id);
@@ -188,7 +188,7 @@ ${r.mixte ? `<p>${esc(r.mixte.texte)}</p>` : ''}<div class="repart-dt">${anneau(
 <p><i class="pt pt-conso"></i>Conso <b>${p.conso} €</b></p>
 <p><i class="pt pt-usure"></i>Usure <b>${p.usure} €</b> <small>(${Math.round(r.km)} km)</small></p>
 <p>${peage}</p>
-<p>Total <b>${p.tot} €</b>${eco >= 1 ? ` · ${eco} € de moins que le plus rapide` : ''}</p>${s.rembourse ? (m => `<p>Ta marge <b>${m.marge >= 0 ? '+' : '−'}${Math.abs(m.marge)} €</b> <small>(note de frais ${m.note} € − coût réel ${m.reel} €)</small></p>`)(margePro(c, s.ik, rapide.r.km)) : ''}</div></div>${gratuits ? `<p>${gratuits}</p>` : ''}
+<p>Total <b>${p.tot} €</b>${eco >= 1 ? ` · ${eco} € de moins que le plus rapide` : ''}</p>${s.rembourse ? (m => `<p>Ta marge <b>${m.marge >= 0 ? '+' : '−'}${Math.abs(m.marge)} €</b></p>`)(margePro(c, s.ik, rapide.r.km)) : ''}</div></div>${gratuits ? `<p>${gratuits}</p>` : ''}
 <p>${Math.round(r.km)} km : autoroute ${Math.round(r.hwKm)} · route ${Math.round(r.routeKm)} · ville ${Math.round(r.villeKm)} · trajet ${numero.get(id)}</p>
 <button type="button" class="gpx" data-gpx="${id}" data-n="${numero.get(id)}">Télécharger le GPX</button>
 </details></div>
@@ -244,11 +244,10 @@ ${anneau(best.c, rapide.c.eur, { etiquette })}</div>
   if (s.rembourse) {
     // Déplacement pro : note de frais (IK sur la distance du plus rapide + péage) moins le coût réel.
     const m = margePro(best.c, s.ik, rapide.r.km);
-    synth += `<div class="sep"></div><div class="ligne"><span class="tag">Pro</span><span class="marge">Ta marge <b>${m.marge >= 0 ? '+' : '−'}${Math.abs(m.marge)} €</b></span></div>
-<span class="compte">Note de frais ${m.note} € (IK ${m.ik} € sur ${Math.round(rapide.r.km)} km + péage ${m.peage} €) − coût réel ${m.reel} €. Le péage, remboursé, ne compte pas dans les prix.</span>`;
+    synth += `<div class="sep"></div><div class="ligne"><span class="tag">Pro</span><span class="marge">Ta marge <b>${m.marge >= 0 ? '+' : '−'}${Math.abs(m.marge)} €</b></span></div>`;
   }
+  compte = { n: routes.length, pointilles: masques.size ? ` · ${masques.size} en pointillés sur la carte` : '' };
   synth += blocAvancement(neufs.length);
-  synth += `<span class="compte">${routes.length} trajets comparés${masques.size ? ` · ${masques.size} sans intérêt, en pointillés sur la carte` : ''}</span>`;
   $('list').innerHTML = `<li class="synth${neufs.length ? ' bravo' : ''}">${synth}</li>` + html;
   draw();
 }
@@ -259,12 +258,18 @@ let masques = new Set();   // identifiants des trajets sans intérêt : hors de 
 let choixId = -1;          // identifiant de « ton choix »
 let seq = 0;               // prochain identifiant de trajet (remis à zéro à chaque recherche)
 let carte = null, calque = null, cadrage = '';
-const TUILES = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';   // conditions : attribution visible, usage modéré
+// Fond de carte épuré (CARTO, données OpenStreetMap) : gris clair en mode clair, gris anthracite en mode sombre ;
+// la couleur est réservée aux tracés. Conditions : attribution visible, usage non commercial.
+// Les sous-domaines a à d sont l'accès gratuit documenté (l'adresse sans sous-domaine demande une clé).
+const TUILES = { clair: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', sombre: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png' };
+const sombre = () => { const t = document.documentElement.dataset.theme; return t === 'dark' || (t !== 'light' && matchMedia('(prefers-color-scheme: dark)').matches); };
+let fond = null;
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => { if (fond) fond.setUrl(TUILES[sombre() ? 'sombre' : 'clair']); });
 
 function creerCarte() {
   carte = L.map('carte', { scrollWheelZoom: false, zoomSnap: 0.25, zoomControl: false });
   L.control.zoom({ position: 'topright' }).addTo(carte);
-  L.tileLayer(TUILES, { maxZoom: 18, attribution: '© <a href="https://www.openstreetmap.org/copyright">contributeurs OpenStreetMap</a>' }).addTo(carte);
+  fond = L.tileLayer(TUILES[sombre() ? 'sombre' : 'clair'], { subdomains: 'abcd', maxZoom: 19, attribution: '© <a href="https://www.openstreetmap.org/copyright">contributeurs OpenStreetMap</a> © <a href="https://carto.com/attributions">CARTO</a>' }).addTo(carte);
   calque = L.layerGroup().addTo(carte);
   carte.on('click', () => { if (hot !== -1) { hot = -1; render(); } });   // toucher le fond désélectionne
   new ResizeObserver(() => carte.invalidateSize()).observe($('carte'));
@@ -341,6 +346,7 @@ function pluieDeBillets() {
 // Avancement de la recherche puis de l'exploration : un seul bloc, en bas de la synthèse, avec barre.
 const barre = (pc, txt, bouton = '') => `<div class="avance-txt"><span>${txt}</span><span class="pc">${pc} %</span></div>
 <div class="route-barre" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pc}"><span class="trace" style="width:${pc}%"></span><span class="voiture" style="left:${pc}%"></span></div>${bouton}`;
+let compte = { n: 0, pointilles: '' };   // « 12 trajets comparés · 10 en pointillés », repris dans la ligne d'avancement
 const LOUPE = '<svg class="pic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6"/><path d="M20 20l-4-4"/></svg>';
 function blocAvancement(nouveaux = derniersNeufs) {
   let h = '';
@@ -351,10 +357,10 @@ function blocAvancement(nouveaux = derniersNeufs) {
     h = barre(pc, `Exploration · ${expl.testes} trajets testés${nouveaux ? ` · ${nouveaux} nouveau${nouveaux > 1 ? 'x' : ''}` : ''}`, '<button type="button" class="contour" id="stopx">Arrêter</button>');
   } else if (rech.etat === 'fini') {
     if (expl.etat === 'fini') {
-      h = `<div class="avance-txt"><span>Exploration terminée : ${nouveaux ? `${nouveaux} nouveau${nouveaux > 1 ? 'x' : ''} trajet${nouveaux > 1 ? 's' : ''}` : 'rien de mieux à trouver'} · ${expl.testes} trajets de plus testés${expl.stop ? ' (arrêtée)' : ''}</span></div>`;
+      h = `<div class="avance-txt"><span>${compte.n} trajets comparés${compte.pointilles} · exploration${expl.stop ? ' arrêtée' : ''} : ${nouveaux ? `${nouveaux} nouveau${nouveaux > 1 ? 'x' : ''}` : 'rien de mieux'}</span></div>`;
     } else {
       const n = expl.etat === 'pret' ? coutPlan(planExploration(trouves, ends.a, ends.b)) : 0;
-      h = `<div class="avance-txt"><span>Recherche terminée en ${rech.sec} s${rech.echecs ? ` · ${rech.echecs} calcul${rech.echecs > 1 ? 's' : ''} en échec` : ''}</span></div>`
+      h = `<div class="avance-txt"><span>${compte.n} trajets comparés en ${rech.sec} s${compte.pointilles}${rech.echecs ? ` · ${rech.echecs} échec${rech.echecs > 1 ? 's' : ''}` : ''}</span></div>`
         + (n ? `<button type="button" class="contour" id="explo">${LOUPE}Explorer encore <small>≈ ${String(Math.max(0.5, Math.round(n * 1.5 / 30) / 2)).replace('.', ',')} min</small></button>` : '');
     }
   }
@@ -683,6 +689,17 @@ $('installer').addEventListener('click', async () => {
 addEventListener('appinstalled', () => { $('installer').hidden = true; });
 
 // Plaque départ / arrivée : le crayon rouvre la saisie ; « Calculer » ouvre l'assistant usure.
+// « Ma position » : le départ est l'endroit où tu es, comme dans Waze (rien n'est envoyé ailleurs qu'au calcul d'itinéraire).
+$('ici').addEventListener('click', () => {
+  const st = $('st');
+  if (!navigator.geolocation) { st.className = 'err'; st.textContent = 'Position indisponible sur cet appareil.'; return; }
+  st.className = ''; st.textContent = 'Recherche de ta position…';
+  navigator.geolocation.getCurrentPosition(p => {
+    choix.from = { lat: +p.coords.latitude.toFixed(5), lon: +p.coords.longitude.toFixed(5), name: 'Ma position' };
+    $('from').value = choix.from.name; st.textContent = '';
+  }, () => { st.className = 'err'; st.textContent = 'Position refusée ou indisponible : saisis le départ.'; },
+  { timeout: 10000, maximumAge: 300000 });
+});
 $('edit').addEventListener('click', () => { $('f').classList.remove('replie'); $('from').focus(); });
 $('reglbtn').addEventListener('click', () => { $('regl').open = !$('regl').open; });
 $('regl').addEventListener('toggle', () => $('reglbtn').setAttribute('aria-expanded', String($('regl').open)));

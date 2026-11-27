@@ -9,7 +9,7 @@ import { TARIFS_KM } from './peages-data.js';
 import { prixDuJour } from './carburant.js';
 
 /** Version affichée en haut de la page : à augmenter à chaque modification publiée. */
-export const VERSION = '1.35.1';
+export const VERSION = '1.35.2';
 export const VERSION_DATE = '27/11/2026';
 
 const $ = id => document.getElementById(id);
@@ -223,12 +223,9 @@ ${r.mixte ? `<p>${esc(r.mixte.texte)}</p>` : ''}<div class="repart-dt">${anneau(
     html += carte(x);
     html += autres.filter(v => avant(v) === x && !versSuivant(v)).map(v => carte(v)).join('');
   });
-  // Les autres trajets (variantes et trajets sans intérêt) : un seul repli, et rien sur la carte tant qu'il est fermé.
-  const nAutres = autres.length + masques.size;
-  if (nAutres) {
-    html += `<li class="plus"><button type="button" id="vdom" aria-expanded="${voirDomines}">${PIC('M6 9l6 6 6-6')}${voirDomines ? 'Masquer les autres trajets' : `Voir les autres trajets (${nAutres})`}</button></li>`;
-    if (voirDomines && masques.size) html += `<li class="info-autres">${masques.size > 1 ? `${masques.size} trajets sans intérêt` : '1 trajet sans intérêt'} (plus lents et pas moins chers) : en pointillés sur la carte.</li>`;
-  }
+  // Les variantes (trajets montrables mais pas dans l'escalier) : repliées. Les trajets écartés, eux, ne sont
+  // que comptés dans le bilan et dessinés en pointillés sur la carte.
+  const pli = autres.length ? `<li class="plus"><button type="button" id="vdom" aria-expanded="${voirDomines}">${PIC('M6 9l6 6 6-6')}${voirDomines ? (autres.length > 1 ? 'Masquer ces trajets' : 'Masquer ce trajet') : autres.length > 1 ? `Voir ${autres.length} trajets de plus` : 'Voir 1 trajet de plus'}</button></li>` : '';
 
   // Synthèse : en tête du panneau. Ton choix, au-delà, avancement et exploration, compteur.
   // Les trouvailles de l'exploration se comptent sans les variantes montées pour la pilule : changer de pilule
@@ -257,7 +254,7 @@ ${anneau(best.c, rapide.c.eur, { etiquette, taille: 88 })}</div>
   if (sugg) synth += `<div class="sep"></div><div class="ligne"><span class="tag">Au-delà</span><button type="button" class="sel droite" data-sel="${sugg.id}">${esc(nom(sugg))} · −${ecartE(best.c.eur, sugg.c.eur)} € pour +${fmtT(sugg.r.min - best.r.min)}</button></div>`;
   compte = routes.length;
   // Avancement (recherche, exploration + Arrêter) sous la carte du résultat ; le bilan en bas de liste.
-  $('list').innerHTML = `<li class="synth${neufs.length ? ' bravo' : ''}">${synth}</li><li class="explo-li">${blocAvancement(neufs.length)}</li>` + html + `<li class="bilan-li">${blocBilan(neufs.length)}</li>`;
+  $('list').innerHTML = `<li class="synth${neufs.length ? ' bravo' : ''}">${synth}</li><li class="explo-li">${blocAvancement(neufs.length)}</li>` + html + `<li class="bilan-li">${blocBilan(neufs.length)}</li>` + pli;
   draw();
 }
 
@@ -372,14 +369,16 @@ function blocAvancement(nouveaux = derniersNeufs) {
   return `<div id="avancement">${h}</div>`;
 }
 // Bilan, en bas de la liste après l'escalier : combien de trajets comparés, et « Explorer encore » si on n'a pas exploré.
+// « · 34 écartés (plus lents et pas moins chers, en pointillés) » : les trajets qui ne sont ni dans l'escalier ni en variante.
+const ecartes = () => (masques.size ? ` · ${masques.size} écarté${masques.size > 1 ? 's' : ''} (plus lent${masques.size > 1 ? 's' : ''} et pas moins cher${masques.size > 1 ? 's' : ''}, en pointillés)` : '');
 function blocBilan(nouveaux = derniersNeufs) {
   let h = '';
   if (rech.etat === 'fini' && expl.etat !== 'encours') {
     if (expl.etat === 'fini') {
-      h = `<span>${compte} trajets comparés · exploration${expl.stop ? ' arrêtée' : ''} : ${nouveaux ? `${nouveaux} nouveau${nouveaux > 1 ? 'x' : ''}` : 'rien de mieux'}</span>`;
+      h = `<span>${compte} trajets comparés${ecartes()} · exploration${expl.stop ? ' arrêtée' : ''} : ${nouveaux ? `${nouveaux} nouveau${nouveaux > 1 ? 'x' : ''}` : 'rien de mieux'}</span>`;
     } else {
       const n = expl.etat === 'pret' ? coutPlan(planExploration(trouves, ends.a, ends.b)) : 0;
-      h = `<span>${compte} trajets comparés en ${rech.sec} s${rech.echecs ? ` · ${rech.echecs} échec${rech.echecs > 1 ? 's' : ''}` : ''}</span>`
+      h = `<span>${compte} trajets comparés${ecartes()} en ${rech.sec} s${rech.echecs ? ` · ${rech.echecs} échec${rech.echecs > 1 ? 's' : ''}` : ''}</span>`
         + (n ? `<button type="button" class="lien" id="explo">${LOUPE}Explorer encore <small>≈ ${String(Math.max(0.5, Math.round(n * 1.5 / 30) / 2)).replace('.', ',')} min</small></button>` : '');
     }
   }

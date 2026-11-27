@@ -28,17 +28,19 @@ export function decode(str, prec = 6) {
 const estAutoroute = m => !!m.highway || (m.street_names || []).some(n => /^A\s?\d/.test(n.trim()));
 
 /**
- * Valhalla (serveur FOSSGIS) compte trop lentement les routes hors autoroute ; sur autoroute, il tombe juste
- * (A10 : 78 min contre 77 chez Waze). Calage de novembre 2026 sur 9 comparaisons avec Waze et Google Maps en
- * circulation normale, mêmes départs et arrivées (plaine, voies express, départementales, Massif central, Alpes) :
- * 0,83 × son temps hors autoroute donne 7 % d'écart moyen, sans biais (de −14 % à +17 % selon le type de route).
+ * Correction des temps de Valhalla (serveur FOSSGIS), calée en novembre 2026 sur 20 comparaisons avec Waze et
+ * Google Maps en circulation normale, mêmes départs et arrivées (plaine, voies express, départementales, villages,
+ * Massif central, Alpes) : sur la route ouverte, Valhalla est trop lent (× 0,75) ; dans les traversées de villes
+ * et de villages (moins de 50 km/h), il est un peu trop rapide (× 1,10 : feux, ronds-points) ; sur autoroute, il
+ * tombe juste. Écart moyen sur un trajet laissé hors du calage : 8,7 %, contre 9,9 % avec un seul coefficient
+ * et 12,3 % sans correction.
  */
-export const K_HORS_AUTOROUTE = 0.83;
+export const K_ROUTE = 0.75, K_VILLE = 1.10;
 
-/** Classe une manœuvre : 'autoroute', 'ville' ou 'route' (vitesse calculée avec le temps corrigé par `k`). */
-export function classe(m, k = 1) {
+/** Classe une manœuvre (temps brut de Valhalla) : 'autoroute', 'ville' (moins de 50 km/h) ou 'route'. */
+export function classe(m) {
   if (estAutoroute(m)) return 'autoroute';
-  const L = m.length || 0, t = (m.time || 0) * k;
+  const L = m.length || 0, t = m.time || 0;
   const vitesse = t > 0 ? L / (t / 3600) : Infinity;
   return vitesse < SEUIL_VILLE ? 'ville' : 'route';
 }
@@ -57,19 +59,20 @@ export function refsOf(man, minKm = 5, max = 6) {
 }
 
 /** Résume un trajet Valhalla : distances par type de route, péage, durée, tracé, entrées et sorties d'autoroute.
- *  Le temps hors autoroute est corrigé par `k` (voir K_HORS_AUTOROUTE ; {k: 1} : temps brut de Valhalla).
- *  Réglage passé dans un objet : `liste.map(analyse)` passe l'indice en 2e argument, qui doit être sans effet. */
-export function analyse(trip, { k = K_HORS_AUTOROUTE } = {}) {
+ *  Les temps sur route et en ville sont corrigés (voir K_ROUTE et K_VILLE ; {kRoute: 1, kVille: 1} : temps brut).
+ *  Réglages passés dans un objet : `liste.map(analyse)` passe l'indice en 2e argument, qui doit être sans effet. */
+export function analyse(trip, { kRoute = K_ROUTE, kVille = K_VILLE } = {}) {
   const leg = trip.legs[0], man = leg.maneuvers || [], pts = decode(leg.shape);
   const km = { autoroute: 0, ville: 0, route: 0 };
   let tollKm = 0, sum = 0, avant = null;
   const ech = [];   // entrées et sorties d'autoroute : {p: [lat, lon], type: 'entree'|'sortie', at: km}
   const peages = [];   // tronçons payants : {km, i0, i1, ref} (indices dans pts, numéro d'autoroute)
-  let gain = 0;   // secondes retirées par la correction hors autoroute
+  let gain = 0;   // secondes retirées par la correction (négatif si les villes ralentissent plus qu'on ne gagne)
   for (const m of man) {
-    const L = m.length || 0, c = classe(m, k);
+    const L = m.length || 0, c = classe(m);
     const hw = c === 'autoroute';
-    if (!hw) gain += (m.time || 0) * (1 - k);
+    if (c === 'route') gain += (m.time || 0) * (1 - kRoute);
+    else if (c === 'ville') gain += (m.time || 0) * (1 - kVille);
     if (avant !== null && hw !== avant && pts[m.begin_shape_index]) ech.push({ p: pts[m.begin_shape_index], type: hw ? 'entree' : 'sortie', at: sum });
     avant = hw; sum += L;
     km[c] += L;

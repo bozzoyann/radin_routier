@@ -45,7 +45,7 @@ test('analyse : répartition et recalage sur la distance du résumé', () => {
     { length: 100, time: 3600, highway: true, toll: true }, // autoroute à péage
     { length: 50, time: 2400 },                             // 75 km/h : route
     { length: 10, time: 1200 }                              // 30 km/h : ville
-  ], { length: 176, time: 7200, has_toll: true }), { k: 1 });   // temps brut (sans correction)
+  ], { length: 176, time: 7200, has_toll: true }), { kRoute: 1, kVille: 1 });   // temps brut (sans correction)
   // Somme des manœuvres 160 km, résumé 176 km : facteur 1,1.
   near(r.hwKm, 110); near(r.routeKm, 55); near(r.villeKm, 11); near(r.tollKm, 110);
   near(r.hwKm + r.routeKm + r.villeKm, r.km);
@@ -309,25 +309,24 @@ test('margePro : note de frais (IK sur la distance de référence + péage) moin
   assert.equal(margePro({ fuel: 60, wear: 32, toll: 0 }, 0.636, 541).marge, 252);
 });
 
-import { K_HORS_AUTOROUTE } from '../cost.js';
+import { K_ROUTE, K_VILLE } from '../cost.js';
 
-test('analyse : temps hors autoroute corrigé (Valhalla y est trop lent), autoroute inchangée', () => {
+test('analyse : temps corrigés (route ouverte plus rapide, villes plus lentes), autoroute inchangée', () => {
   const t = trip([
     { length: 100, time: 3600, highway: true },   // autoroute : 1 h, gardée telle quelle
-    { length: 50, time: 3600 },                   // 50 km en 1 h pour Valhalla : 0,83 h corrigé (60 km/h)
-    { length: 30, time: 2400 }                    // 45 km/h pour Valhalla : « ville »… 54 km/h corrigé : « route »
+    { length: 50, time: 3600 },                   // route (50 km/h pile) : 60 min × 0,75 = 45 min
+    { length: 30, time: 2400 }                    // ville (45 km/h) : 40 min × 1,10 = 44 min
   ], { length: 180, time: 9600 });
-  assert.equal(K_HORS_AUTOROUTE, 0.83);
+  assert.equal(K_ROUTE, 0.75); assert.equal(K_VILLE, 1.10);
   const r = analyse(t);
-  near(r.min, 60 + (60 + 40) * 0.83);           // 143 min au lieu de 160
-  near(r.villeKm, 0); near(r.routeKm, 80);      // la conso de ville ne s'applique plus à la nationale
-  const brut = analyse(t, { k: 1 });
-  near(brut.min, 160); near(brut.villeKm, 30);
+  near(r.min, 60 + 45 + 44);                    // 149 min au lieu de 160
+  near(r.villeKm, 30); near(r.routeKm, 50);     // le classement (et donc la conso) reste celui de Valhalla
+  near(analyse(t, { kRoute: 1, kVille: 1 }).min, 160);
 });
 
 test('analyse : appelée par liste.map(analyse), l\'indice ne change rien (bug de la v1.24.0 : « 0 min »)', () => {
   const t = trip([{ length: 100, time: 3600, highway: true }, { length: 50, time: 3600 }], { length: 150, time: 7200 });
   const seule = analyse(t);
   for (const r of [t, t, t].map(analyse)) { near(r.min, seule.min); near(r.routeKm, seule.routeKm); }
-  near(seule.min, 60 + 60 * K_HORS_AUTOROUTE);
+  near(seule.min, 60 + 60 * K_ROUTE);
 });

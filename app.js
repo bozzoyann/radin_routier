@@ -1,5 +1,5 @@
 // Interface : saisie, réglages, liste des trajets, carte schématique, exports.
-import { DEF, USURE_DEF, usureParKm, analyse, dedupe, cost, along, marche, classer, LIMITE_DEF } from './cost.js';
+import { DEF, USURE_DEF, usureParKm, analyse, dedupe, cost, along, marche, classer, LIMITE_DEF, margePro } from './cost.js';
 import { PROFILES, DELAI_VALHALLA, geocode, route, suggest } from './routing.js';
 import { candidats, reglagesMixte, joindre } from './mixtes.js';
 import { villesTraversees, villesEtapes } from './villes.js';
@@ -9,7 +9,7 @@ import { TARIFS_KM } from './peages-data.js';
 import { prixDuJour } from './carburant.js';
 
 /** Version affichée en haut de la page : à augmenter à chaque modification publiée. */
-export const VERSION = '1.20.0';
+export const VERSION = '1.21.0';
 export const VERSION_DATE = '27/11/2026';
 
 const $ = id => document.getElementById(id);
@@ -19,7 +19,7 @@ const FUEL_DEF = { 'SP95-E10': 2.05, 'Gazole': 2.20 };
 const PKEY = 'rr-profils', CKEY = 'rr-reglages';
 const KEYS = Object.keys(DEF);   // champs du formulaire
 const PROF_KEYS = ['usure', 'cville', 'croute', 'cauto'];   // propres à chaque voiture
-const CRIT_KEYS = ['peage'];                                 // propres à l'utilisateur
+const CRIT_KEYS = ['peage', 'ik'];                                 // propres à l'utilisateur
 let prices = {};               // prix du litre par carburant, partagé entre les voitures
 let profils = null;            // {list: [{id, nom, carbu, usure, cville, croute, cauto, wiz}], actif}
 let choix = { from: null, to: null };   // lieux choisis dans les suggestions
@@ -52,7 +52,8 @@ function save() {
   p.carbu = $('carbu').value;
   if (!$('prixauto').checked) prices[p.carbu] = s.prix;   // le prix du jour ne remplace pas ton prix manuel
   store.set(PKEY, profils);
-  store.set(CKEY, { peage: s.peage, rembourse: s.rembourse, limite: isFinite(limite) ? limite : null, prices, prixAuto: $('prixauto').checked });
+  $('pro').hidden = !s.rembourse;
+  store.set(CKEY, { peage: s.peage, ik: s.ik, rembourse: s.rembourse, limite: isFinite(limite) ? limite : null, prices, prixAuto: $('prixauto').checked });
   const fr = n => String(n).replace('.', ',');
   $('sum').textContent = `${p.nom} · ${fr(s.prix)} €/L · ${fr(Math.round(s.usure * 1000) / 10)} c€/km${s.rembourse ? ' · péage remboursé' : ''}`;
 }
@@ -187,7 +188,7 @@ ${r.mixte ? `<p>${esc(r.mixte.texte)}</p>` : ''}<div class="repart-dt">${anneau(
 <p><i class="pt pt-conso"></i>Conso <b>${p.conso} €</b></p>
 <p><i class="pt pt-usure"></i>Usure <b>${p.usure} €</b> <small>(${Math.round(r.km)} km)</small></p>
 <p>${peage}</p>
-<p>Total <b>${p.tot} €</b>${eco >= 1 ? ` · ${eco} € de moins que le plus rapide` : ''}</p></div></div>${gratuits ? `<p>${gratuits}</p>` : ''}
+<p>Total <b>${p.tot} €</b>${eco >= 1 ? ` · ${eco} € de moins que le plus rapide` : ''}</p>${s.rembourse ? (m => `<p>Ta marge <b>${m.marge >= 0 ? '+' : '−'}${Math.abs(m.marge)} €</b> <small>(note de frais ${m.note} € − coût réel ${m.reel} €)</small></p>`)(margePro(c, s.ik, rapide.r.km)) : ''}</div></div>${gratuits ? `<p>${gratuits}</p>` : ''}
 <p>${Math.round(r.km)} km : autoroute ${Math.round(r.hwKm)} · route ${Math.round(r.routeKm)} · ville ${Math.round(r.villeKm)} · trajet ${numero.get(id)}</p>
 <button type="button" class="gpx" data-gpx="${id}" data-n="${numero.get(id)}">Télécharger le GPX</button>
 </details></div>
@@ -240,7 +241,12 @@ ${anneau(best.c, rapide.c.eur, { etiquette })}</div>
 <div class="repart" aria-hidden="true"><span><i class="pt pt-conso"></i>Conso <b>${pb.conso} €</b></span><span><i class="pt pt-usure"></i>Usure <b>${pb.usure} €</b></span>${pb.peage >= 1 ? `<span><i class="pt pt-peage"></i>Péage <b>${pb.peage} €</b></span>` : `<span>${s.rembourse && best.c.toll >= 0.5 ? 'Péage remboursé' : 'Sans péage'}</span>`}${eco >= 1 ? `<span><i class="pt pt-eco"></i>Économie <b>${eco} €</b></span>` : ''}</div>`;
   synth += `<div class="actions"><a class="maps" href="${gmaps(best.r)}" target="_blank" rel="noopener">Ouvrir dans Maps</a></div>`;
   if (sugg) synth += `<div class="sep"></div><div class="ligne"><span class="tag">Au-delà</span><button type="button" class="sel droite" data-sel="${sugg.id}">Trajet ${numero.get(sugg.id)} · −${ecartE(best.c.eur, sugg.c.eur)} € pour +${fmtT(sugg.r.min - best.r.min)}</button></div>`;
-  if (s.rembourse) synth += '<span class="compte">Péage remboursé : il ne compte ni dans les prix ni dans le classement.</span>';
+  if (s.rembourse) {
+    // Déplacement pro : note de frais (IK sur la distance du plus rapide + péage) moins le coût réel.
+    const m = margePro(best.c, s.ik, rapide.r.km);
+    synth += `<div class="sep"></div><div class="ligne"><span class="tag">Pro</span><span class="marge">Ta marge <b>${m.marge >= 0 ? '+' : '−'}${Math.abs(m.marge)} €</b></span></div>
+<span class="compte">Note de frais ${m.note} € (IK ${m.ik} € sur ${Math.round(rapide.r.km)} km + péage ${m.peage} €) − coût réel ${m.reel} €. Le péage, remboursé, ne compte pas dans les prix.</span>`;
+  }
   synth += blocAvancement(neufs.length);
   synth += `<span class="compte">${routes.length} trajets comparés${masques.size ? ` · ${masques.size} sans intérêt, en pointillés sur la carte` : ''}</span>`;
   $('list').innerHTML = `<li class="synth${neufs.length ? ' bravo' : ''}">${synth}</li>` + html;

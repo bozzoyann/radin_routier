@@ -297,3 +297,14 @@ test('cost : péage remboursé (déplacement pro), calculé mais hors du prix', 
   assert.equal(c.rembourse, true);
   assert.equal(cost(r, DEF).rembourse, false);
 });
+
+import { margePro } from '../cost.js';
+
+test('margePro : note de frais (IK sur la distance de référence + péage) moins le coût réel', () => {
+  const c = { fuel: 71.6, wear: 37.8, toll: 51.2 };   // conso + usure : 109 €
+  const m = margePro(c, 0.636, 541);       // IK : 541 km × 0,636 = 344 €
+  assert.deepEqual(m, { ik: 344, peage: 51, note: 395, reel: 160, marge: 235 });
+  assert.equal(m.note - m.reel, m.marge);  // le péage, remboursé au réel, s'annule
+  // Un trajet plus lent mais sans péage, à IK égales : la marge suit le coût réel.
+  assert.equal(margePro({ fuel: 60, wear: 32, toll: 0 }, 0.636, 541).marge, 252);
+});

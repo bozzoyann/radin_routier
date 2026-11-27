@@ -82,6 +82,8 @@
 <legend>Péage</legend>
 <label>Hors tarifs connus<span class="u court"><input id="peage" type="number" step="0.01" min="0" inputmode="decimal"><span>€/km</span></span></label>
 <label class="chk"><input type="checkbox" id="rembourse"> Péage remboursé (déplacement pro)</label>
+<div class="pro" id="pro" hidden><label>IK remboursées<span class="u court"><input id="ik" type="number" step="0.001" min="0" inputmode="decimal"><span>€/km</span></span></label>
+<p class="hint">Barème 2026, inchangé depuis 2023 : 5 CV 0,636 €/km, 6 CV 0,665 €/km (jusqu'à 5 000 km par an). Comptées sur la distance du trajet le plus rapide.</p></div>
 <p class="hint">Tarif réel sur 40 autoroutes et 10 ponts et tunnels.</p>
 </fieldset>
 </div>
@@ -105,6 +107,7 @@
 <dt>Carburant</dt><dd>Consommation ville, route ou autoroute selon chaque tronçon (ville : moins de 50 km/h de moyenne), au prix du jour des stations autour du départ, ou à ton prix.</dd>
 <dt>Usure</dt><dd>Ce qui s'use avec les kilomètres : pneus, freins, embrayage, pièces, décote. 7 c€/km par défaut, réglable.</dd>
 <dt>Péage</dt><dd>Tarif réel au kilomètre de 40 autoroutes (APRR, AREA, VINCI), estimé pour Sanef et SAPN, prix exact de 10 ponts et tunnels (viaduc de Millau, pont de Normandie…), tarifs 2026. Ailleurs, 0,09 €/km. C'est une approximation, pas le tarif exact de la barrière. « Péage remboursé » (déplacement pro) le retire des prix et du classement ; il reste indiqué dans le détail.</dd>
+<dt>Pro</dt><dd>Ta marge : la note de frais (IK sur la distance du trajet le plus rapide, plus le péage) moins le coût réel (conso, usure, péage). Les IK étant fixes, le trajet le moins cher est aussi celui qui te rapporte le plus.</dd>
 <dt>Temps</dt><dd>Durées sans trafic.</dd>
 <dt>Anneau</dt><dd>Ce que coûte ton choix : la conso en bleu foncé, l'usure en bleu clair, le péage en jaune, et en gris ce que tu économises par rapport au plus rapide. L'usure ne dépend que des kilomètres : à distance égale, autoroute et nationale usent autant, la différence se joue sur la conso et le péage. Le même anneau est dans « Détail du prix » de chaque trajet.</dd>
 <dt>Escalier</dt><dd>Les trajets vont du plus rapide au moins cher ; une marche doit faire gagner au moins 12 %, ou 5 € à 1 €/min. « Ton choix » : le moins cher dans le temps en plus accepté, si chaque pas fait gagner au moins 2 €, et au moins 1 € toutes les 3 min perdues.</dd>

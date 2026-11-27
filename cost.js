@@ -2,7 +2,9 @@
 import { TARIFS_KM } from './peages-data.js';
 
 /** Valeurs par défaut du profil et des critères (voir docs/BRIEF.md). */
-export const DEF = {prix: 2.05, usure: 0.07, cville: 7.5, croute: 5.5, cauto: 6.5, peage: 0.09};
+export const DEF = {prix: 2.05, usure: 0.07, cville: 7.5, croute: 5.5, cauto: 6.5, peage: 0.09, ik: 0.636};
+
+/** Indemnités kilométriques (barème fiscal 2026, gelé depuis 2023, jusqu'à 5 000 km par an) : 5 CV 0,636 €/km, 6 CV 0,665 €/km. */
 
 /** Sous ce seuil de vitesse moyenne (km/h), une manœuvre hors autoroute compte comme « ville ». */
 export const SEUIL_VILLE = 50;
@@ -299,4 +301,15 @@ export function classer(items, limite = LIMITE_DEF) {
     variantes: variantes.filter(i => !promus.includes(i)),
     masques, choix, suggestion, promus, numeros
   };
+}
+
+/**
+ * Déplacement pro : ce que rapporte un trajet une fois remboursé. Les IK (`ik` €/km) se comptent sur une
+ * distance de référence fixe `refKm` (celle du trajet le plus rapide, que l'employeur peut vérifier) ;
+ * le péage est remboursé au réel, il s'annule. Montants arrondis pour que les additions tombent juste.
+ * Renvoie {ik, peage, note (note de frais), reel (coût réel), marge}.
+ */
+export function margePro(c, ik, refKm) {
+  const ikTot = Math.round(ik * refKm), peage = Math.round(c.toll), roule = Math.round(c.fuel + c.wear);
+  return { ik: ikTot, peage, note: ikTot + peage, reel: roule + peage, marge: ikTot - roule };
 }

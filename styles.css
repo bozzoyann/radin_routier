@@ -176,7 +176,7 @@ body.resultats .leaflet-bottom{bottom:24px}
 }
 
 /* Synthèse : en tête du panneau */
-.synth{display:flex;flex-direction:column;gap:10px;padding:0 0 14px;border-bottom:1px solid var(--line);margin-bottom:6px}
+.synth{display:flex;flex-direction:column;gap:10px;padding:14px;border:2px solid var(--bleu-pale);border-radius:18px;background:var(--surf);box-shadow:0 4px 16px rgb(17 24 39/.08);margin-bottom:10px}
 .synth .tag{font-size:13px;font-weight:600;color:var(--bleu-txt);background:var(--bleu-pale);border-radius:8px;padding:3px 8px}
 .synth .ligne{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
 .synth .droite{margin-left:auto}

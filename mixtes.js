@@ -100,3 +100,47 @@ export function joindre(a, b, c) {
     }
   };
 }
+
+/**
+ * Points de passage qui obligent un GPS (Google Maps…) à suivre le trajet `pts` plutôt que le trajet `ref`
+ * (le plus rapide, que le GPS choisirait de lui-même). On repère les portions où `pts` s'écarte de `ref` de plus
+ * de `seuil` km et on y répartit au plus `n` points : 1 par portion, les plus longues d'abord, le reste dans la
+ * plus longue. Dans une portion, les points se placent à 15 %, 50 % et 85 % de sa longueur : un court détour est
+ * verrouillé à l'entrée, au milieu et à la sortie, un long sur toute sa longueur. Points espacés d'au moins 5 km,
+ * dans l'ordre du trajet. Si les deux trajets se confondent : points répartis (25 %, 50 %, 75 %).
+ */
+export function pointsDePassage(pts, ref, { n = 3, seuil = 2, pas = 1 } = {}) {
+  const R = reechantillonne(pts, pas), F = reechantillonne(ref, 2);
+  const repartis = () => [0.25, 0.5, 0.75].slice(0, n).map(f => R[Math.min(R.length - 1, Math.round(f * (R.length - 1)))]);
+  if (R.length < 3 || F.length < 2) return repartis();
+  const d = R.map(p => {
+    let m = Infinity;
+    for (let j = 1; j < F.length; j++) {
+      const a = F[j - 1], b = F[j];
+      if (Math.min(a[0], b[0]) - 0.05 > p[0] + m / 111 || Math.max(a[0], b[0]) + 0.05 < p[0] - m / 111) continue;   // trop loin en latitude
+      m = Math.min(m, dSegment(p, a, b));
+    }
+    return m;
+  });
+  // Les portions qui s'écartent du trajet de référence : [début, fin].
+  const sections = [];
+  for (let i = 0; i < R.length; i++) {
+    if (d[i] < seuil) continue;
+    let j = i;
+    while (j + 1 < R.length && d[j + 1] >= seuil) j++;
+    sections.push({ s: i, e: j, long: j - i, c: 0 });
+    i = j;
+  }
+  if (!sections.length) return repartis();
+  sections.sort((x, y) => y.long - x.long);
+  for (let k = 0; k < n; k++) sections[k < sections.length ? k : 0].c++;
+  const fractions = { 1: [0.5], 2: [0.25, 0.75], 3: [0.15, 0.5, 0.85] };
+  const choisis = [];
+  for (const x of sections) {
+    for (const f of fractions[Math.min(3, x.c)] || []) {
+      const k = x.s + Math.round(f * (x.e - x.s));
+      if (choisis.every(c => Math.abs(c - k) * pas >= 5)) choisis.push(k);
+    }
+  }
+  return choisis.sort((x, y) => x - y).map(k => R[k]);
+}

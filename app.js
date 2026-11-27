@@ -1,7 +1,7 @@
 // Interface : saisie, réglages, liste des trajets, carte schématique, exports.
 import { DEF, USURE_DEF, usureParKm, analyse, dedupe, cost, along, marche, classer, LIMITE_DEF, margePro } from './cost.js';
 import { PROFILES, DELAI_VALHALLA, geocode, route, suggest, lienTrajet, lireTrajet, lieuPourLien } from './routing.js';
-import { candidats, reglagesMixte, joindre } from './mixtes.js';
+import { candidats, reglagesMixte, joindre, pointsDePassage } from './mixtes.js';
 import { villesTraversees, villesEtapes, nomsTrajets } from './villes.js';
 import { planExploration, coutPlan, produit, assembler, cleMorceau, RAPIDE, LIBRE } from './explore.js';
 import { ouvragesTraverses } from './ouvrages.js';
@@ -9,7 +9,7 @@ import { TARIFS_KM } from './peages-data.js';
 import { prixDuJour } from './carburant.js';
 
 /** Version affichée en haut de la page : à augmenter à chaque modification publiée. */
-export const VERSION = '1.28.0';
+export const VERSION = '1.29.0';
 export const VERSION_DATE = '27/11/2026';
 
 const $ = id => document.getElementById(id);
@@ -59,13 +59,13 @@ function save() {
   $('sum').textContent = `${p.nom} · ${fr(s.prix)} €/L · ${fr(Math.round(s.usure * 1000) / 10)} c€/km${s.rembourse ? ' · péage remboursé' : ''}`;
 }
 
-function gmaps(r) {
+function gmaps(r, ref) {
   const ll = p => `${p[0].toFixed(5)},${p[1].toFixed(5)}`;
-  // Trajet mixte : le point de bascule devient l'étape du milieu, encadrée par un point de chaque moitié.
-  let etapes;
-  if (r.mixte) { const f = r.mixte.kmVia / r.km; etapes = [along(r.pts, [f / 2])[0], r.mixte.via, along(r.pts, [f + (1 - f) / 2])[0]]; }
-  else etapes = along(r.pts, [0.25, 0.5, 0.75]);
-  const w = etapes.map(ll).join('|');
+  // 3 points de passage là où le trajet s'écarte du plus rapide `ref` (mixtes.js pointsDePassage) : le GPS est
+  // obligé de suivre le détour au lieu de reprendre l'autoroute. 3, c'est ce que tout lien Maps accepte.
+  const cle = ref && ref !== r ? ref.id : -1;
+  if (!r.passage || r.passage.cle !== cle) r.passage = { cle, pts: cle !== -1 ? pointsDePassage(r.pts, ref.pts) : along(r.pts, [0.25, 0.5, 0.75]) };
+  const w = r.passage.pts.map(ll).join('|');
   return `https://www.google.com/maps/dir/?api=1&travelmode=driving&origin=${ll(r.pts[0])}&destination=${ll(r.pts[r.pts.length - 1])}&waypoints=${encodeURIComponent(w)}`;
 }
 
@@ -181,7 +181,7 @@ function render() {
 <div class="tete-tr"><span class="prix">${fmtE(c.eur)}</span><span class="duree">${fmtT(r.min)}</span><span class="km">· ${Math.round(r.km)} km</span><span class="role">${role || nom({ id })}</span></div>
 ${jauge(c, rapide.c.eur)}
 <div class="refs">${refs}${via}<span class="fin">${ecartV}<svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></span></div>
-<div class="act">${best.id === id ? '' : `<a class="maps" href="${gmaps(r)}" target="_blank" rel="noopener">Ouvrir dans Maps</a>`}
+<div class="act">${best.id === id ? '' : `<a class="maps" href="${gmaps(r, rapide.r)}" target="_blank" rel="noopener">Ouvrir dans Maps</a>`}
 <details class="dt"${hot === id ? ' open' : ''}><summary>Détail du prix</summary>${r.explore ? '<p>Trouvé par l\'exploration.</p>' : ''}
 ${r.mixte ? `<p>${esc(r.mixte.texte)}</p>` : ''}<div class="repart-dt">${anneau(c, rapide.c.eur, { taille: 64, centre: false })}<div>
 <p><i class="pt pt-conso"></i>Conso <b>${p.conso} €</b></p>
@@ -244,7 +244,7 @@ ${r.mixte ? `<p>${esc(r.mixte.texte)}</p>` : ''}<div class="repart-dt">${anneau(
 <div class="ligne"><span class="prix">${pb.tot} €</span><span class="duree">${fmtT(best.r.min)}</span></div><div class="chips">${ecart}${marge}</div></div>
 ${anneau(best.c, rapide.c.eur, { etiquette, taille: 88 })}</div>
 <div class="repart" aria-hidden="true"><span><i class="pt pt-conso"></i>Conso <b>${pb.conso} €</b></span><span><i class="pt pt-usure"></i>Usure <b>${pb.usure} €</b></span>${pb.peage >= 1 ? `<span><i class="pt pt-peage"></i>Péage <b>${pb.peage} €</b></span>` : `<span>${s.rembourse && best.c.toll >= 0.5 ? 'Péage remboursé' : 'Sans péage'}</span>`}${eco >= 1 ? `<span><i class="pt pt-eco"></i>Économie <b>${eco} €</b></span>` : ''}</div>`;
-  synth += `<div class="actions"><a class="maps" href="${gmaps(best.r)}" target="_blank" rel="noopener">Ouvrir dans Maps</a><button type="button" class="icone partage" id="partage" aria-label="Partager ce trajet"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 13v6a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-6M12 3v12M7 8l5-5 5 5"/></svg></button></div>`;
+  synth += `<div class="actions"><a class="maps" href="${gmaps(best.r, rapide.r)}" target="_blank" rel="noopener">Ouvrir dans Maps</a><button type="button" class="icone partage" id="partage" aria-label="Partager ce trajet"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 13v6a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-6M12 3v12M7 8l5-5 5 5"/></svg></button></div>`;
   if (sugg) synth += `<div class="sep"></div><div class="ligne"><span class="tag">Au-delà</span><button type="button" class="sel droite" data-sel="${sugg.id}">${esc(nom(sugg))} · −${ecartE(best.c.eur, sugg.c.eur)} € pour +${fmtT(sugg.r.min - best.r.min)}</button></div>`;
   compte = routes.length;
   synth += blocAvancement(neufs.length);

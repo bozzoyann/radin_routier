@@ -68,3 +68,20 @@ test('joindre : sommes, tracé et description', () => {
   assert.equal(j.mixte.texte, 'Sans autoroute sur 156 km, puis A81');
   assert.equal(joindre(b, a, { sens: 'quitte', p: [0, 1] }).mixte.texte, 'A81 sur 119 km, puis sans autoroute');
 });
+
+import { pointsDePassage } from '../mixtes.js';
+
+test('pointsDePassage : dans le détour, pas sur la portion commune avec le plus rapide', () => {
+  // Le plus rapide : tout droit vers l'est (≈ 111 km). Le trajet choisi s'en écarte de ≈ 11 km entre 0,3 et 0,7.
+  const ref = Array.from({ length: 101 }, (_, i) => [0, i / 100]);
+  const choisi = [...Array.from({ length: 31 }, (_, i) => [0, i / 100]), ...Array.from({ length: 41 }, (_, i) => [0.1, 0.3 + i / 100]), ...Array.from({ length: 31 }, (_, i) => [0, 0.7 + i / 100])];
+  const p = pointsDePassage(choisi, ref);
+  assert.equal(p.length, 3);
+  for (const q of p) assert.equal(q[0], 0.1);                          // tous dans le détour
+  assert.ok(p[0][1] < 0.4 && p[2][1] > 0.6);                           // entrée et sortie du détour
+  assert.ok(p[0][1] < p[1][1] && p[1][1] < p[2][1]);                  // dans l'ordre du trajet
+  // Même trajet que le plus rapide : points répartis à 25, 50 et 75 %.
+  const r = pointsDePassage(ref, ref);
+  assert.equal(r.length, 3); assert.ok(Math.abs(r[1][1] - 0.5) < 0.02);
+  assert.equal(pointsDePassage(choisi, ref, { n: 1 }).length, 1);
+});

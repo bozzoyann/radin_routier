@@ -88,7 +88,7 @@ L'écran tient en une colonne sur téléphone : la saisie, les réglages repliab
    - Chaque trajet indique jusqu'à 3 villes repères traversées (« par Albi · Mende · Saint-Étienne »), espacées d'au moins 25 % du trajet, tirées d'une liste intégrée de 519 préfectures, sous-préfectures et villes de 25 000 habitants et plus (générée par `outils/villes.mjs`).
 8. **Raccourcis** : la voiture (menu) et le mode pro (bouton « Pro · péage remboursé ») restent visibles au-dessus de « Comparer », puis au-dessus de la carte avec les résultats ; les changer recalcule aussitôt les trajets déjà trouvés.
 9. **Partager** : un bouton à côté de « Ouvrir dans Maps » partage un lien `…/radin_routier/?de=…&a=…&temps=…` (menu de partage du téléphone, sinon copie). Ouvert, ce lien remplit le trajet ; la recherche part sur « Comparer », le temps de vérifier les raccourcis (voiture, mode pro) ; « Ma position » y devient des coordonnées arrondies à 100 m environ.
-10. **Pour partir** : un lien Google Maps avec 3 points de passage placés là où le trajet s'écarte du plus rapide (entrée, milieu et sortie du détour, `mixtes.js` pointsDePassage), pour que le GPS ne reprenne pas l'autoroute ; et un fichier GPX pour OsmAnd ou Organic Maps. Waze n'accepte pas de points de passage dans un lien, il est donc exclu.
+10. **Pour partir** : un lien Google Maps avec 3 points de passage placés là où le trajet s'écarte du plus rapide (entrée, milieu et sortie du détour, `mixtes.js` pointsDePassage), pour que le GPS ne reprenne pas l'autoroute (testé : Google refait le même trajet à 1 km près sur 477). 3 points, c'est la limite des navigateurs mobiles (9 dans l'appli Maps). Trajet sans péage : `avoid=tolls` en plus. Départ « Ma position » : pas de départ envoyé, Maps part du téléphone et propose « Démarrer » (`routing.js` lienMaps). Et un fichier GPX pour OsmAnd ou Organic Maps. Waze n'accepte pas de points de passage dans un lien, il est donc exclu.
 11. **Confort** : des boutons d'au moins 44 px, et un affichage lisible en mode clair comme en mode sombre.
 
 ## Architecture technique
@@ -164,4 +164,4 @@ Le prototype a été testé contre les vrais serveurs le 25 novembre 2026 : Toul
 - **Seuil « ville » à 50 km/h de moyenne** : c'est une approximation, à ajuster après quelques trajets réels.
 - **Usure et décote** : ce sont des estimations, à remplacer par les vraies factures.
 - **Prix du carburant** : moyenne des stations (prix du jour) ; 2,05 €/L seulement si le service est injoignable. La moyenne locale peut s'écarter du prix de la station où l'on fait réellement le plein.
-- **Lien Google Maps** : Google peut recalculer son propre tracé entre les 3 points de passage.
+- **Lien Google Maps** : Google peut recalculer son propre tracé entre les 3 points de passage (sauf les péages, évités si le trajet n'en a pas). À vérifier : que « Éviter les péages » ne reste pas coché dans Maps après un lien.

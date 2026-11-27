@@ -68,3 +68,11 @@ test('nomsTrajets : la ville la plus distinctive, puis une 2e ville, puis un num
   // Une seule ville en commun et rien d'autre : un numéro.
   assert.deepEqual(nomsTrajets([['Albi'], ['Albi']]), ['par Albi', 'par Albi (2)']);
 });
+
+test('nomsTrajets : mêmes villes, routes différentes : la route qui fait la différence', () => {
+  // Le plus rapide et un trajet sans péage passent par les mêmes villes : on les nomme par leur route propre.
+  assert.deepEqual(nomsTrajets([['Tours', 'Saumur'], ['Tours', 'Saumur'], ['Blois']], [['A10', 'A85', 'D960'], ['D952', 'D960'], ['N10']]),
+    ['par l\'A10', 'par la D952', 'par Blois']);
+  // Mêmes routes aussi : on garde le numéro.
+  assert.deepEqual(nomsTrajets([['Albi'], ['Albi']], [['N88'], ['N88']]), ['par Albi', 'par Albi (2)']);
+});

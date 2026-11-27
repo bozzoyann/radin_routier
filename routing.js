@@ -125,3 +125,18 @@ export function lieuPourLien(l, texte) {
   const nom = String(texte).replace(/\s*\((\d{2}|2A|2B)\)\s*$/, '');
   return l ? { nom, pos: `${l.lat.toFixed(4)},${l.lon.toFixed(4)}` } : { nom };
 }
+
+/**
+ * Lien « Ouvrir dans Maps » (doc Google Maps URLs). `de` absent : Maps part de la position du téléphone et
+ * propose « Démarrer » tout de suite. 3 points de passage au plus : c'est la limite des navigateurs mobiles
+ * (9 dans l'appli). `sansPeage` : le trajet n'a aucun péage, Maps les évite aussi entre deux points.
+ */
+export function lienMaps({ de, a, passages = [], sansPeage = false }) {
+  const ll = p => `${p[0].toFixed(5)},${p[1].toFixed(5)}`;
+  const q = new URLSearchParams({ api: '1', travelmode: 'driving' });
+  if (de) q.set('origin', ll(de));
+  q.set('destination', ll(a));
+  if (passages.length) q.set('waypoints', passages.slice(0, 3).map(ll).join('|'));
+  if (sansPeage) q.set('avoid', 'tolls');
+  return `https://www.google.com/maps/dir/?${q}`;
+}

@@ -88,3 +88,20 @@ test('liens de partage : fabriquer, relire, nettoyer les lieux', () => {
   assert.deepEqual(lieuPourLien({ name: 'Ajaccio (2A)', lat: 41.919, lon: 8.7386 }, 'Ajaccio (2A)'), { nom: 'Ajaccio', pos: '41.9190,8.7386' });
   assert.deepEqual(lieuPourLien({ name: 'Ma position', lat: 45.123456, lon: 4.987654 }, 'Ma position'), { nom: 'Position partagée', pos: '45.123,4.988' });
 });
+
+test('lienMaps : départ, 3 points de passage au plus, péages évités si le trajet n\'en a pas', async () => {
+  const { lienMaps } = await import('../routing.js');
+  const de = [43.6045, 1.44463], a = [45.75783, 4.83196], p = [[43.9, 2.1], [44.5, 3.3], [45.3, 4.2], [45.5, 4.5]];
+  const u = new URL(lienMaps({ de, a, passages: p }));
+  assert.equal(u.origin + u.pathname, 'https://www.google.com/maps/dir/');
+  assert.equal(u.searchParams.get('api'), '1');
+  assert.equal(u.searchParams.get('origin'), '43.60450,1.44463');
+  assert.equal(u.searchParams.get('destination'), '45.75783,4.83196');
+  assert.equal(u.searchParams.get('waypoints').split('|').length, 3);
+  assert.equal(u.searchParams.get('avoid'), null);
+  // « Ma position » : pas de départ (Maps part du téléphone) ; trajet sans péage : avoid=tolls.
+  const v = new URL(lienMaps({ de: null, a, passages: p.slice(0, 1), sansPeage: true }));
+  assert.equal(v.searchParams.has('origin'), false);
+  assert.equal(v.searchParams.get('avoid'), 'tolls');
+  assert.equal(v.searchParams.get('waypoints'), '43.90000,2.10000');
+});

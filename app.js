@@ -1,6 +1,6 @@
 // Interface : saisie, réglages, liste des trajets, carte schématique, exports.
 import { DEF, USURE_DEF, usureParKm, analyse, dedupe, cost, along, marche, classer, LIMITE_DEF, margePro } from './cost.js';
-import { PROFILES, DELAI_VALHALLA, geocode, route, suggest, lienTrajet, lireTrajet, lieuPourLien } from './routing.js';
+import { PROFILES, DELAI_VALHALLA, geocode, route, suggest, lienMaps, lienTrajet, lireTrajet, lieuPourLien } from './routing.js';
 import { candidats, reglagesMixte, joindre, pointsDePassage } from './mixtes.js';
 import { villesTraversees, villesEtapes, nomsTrajets } from './villes.js';
 import { planExploration, coutPlan, produit, assembler, cleMorceau, RAPIDE, LIBRE } from './explore.js';
@@ -9,7 +9,7 @@ import { TARIFS_KM } from './peages-data.js';
 import { prixDuJour } from './carburant.js';
 
 /** Version affichée en haut de la page : à augmenter à chaque modification publiée. */
-export const VERSION = '1.30.0';
+export const VERSION = '1.31.0';
 export const VERSION_DATE = '27/11/2026';
 
 const $ = id => document.getElementById(id);
@@ -67,14 +67,14 @@ function save() {
   $('sum').textContent = `${p.nom} · ${fr(s.prix)} €/${unite(p.carbu)} · ${fr(Math.round(s.usure * 1000) / 10)} c€/km${s.rembourse ? ' · péage remboursé' : ''}`;
 }
 
-function gmaps(r, ref) {
-  const ll = p => `${p[0].toFixed(5)},${p[1].toFixed(5)}`;
+function gmaps({ r, c }, ref) {
   // 3 points de passage là où le trajet s'écarte du plus rapide `ref` (mixtes.js pointsDePassage) : le GPS est
-  // obligé de suivre le détour au lieu de reprendre l'autoroute. 3, c'est ce que tout lien Maps accepte.
+  // obligé de suivre le détour au lieu de reprendre l'autoroute.
   const cle = ref && ref !== r ? ref.id : -1;
   if (!r.passage || r.passage.cle !== cle) r.passage = { cle, pts: cle !== -1 ? pointsDePassage(r.pts, ref.pts) : along(r.pts, [0.25, 0.5, 0.75]) };
-  const w = r.passage.pts.map(ll).join('|');
-  return `https://www.google.com/maps/dir/?api=1&travelmode=driving&origin=${ll(r.pts[0])}&destination=${ll(r.pts[r.pts.length - 1])}&waypoints=${encodeURIComponent(w)}`;
+  // Départ « Ma position » : on ne l'envoie pas, Maps part du téléphone (bouton « Démarrer » direct).
+  const ici = ends && ends.a && ends.a.name === 'Ma position';
+  return lienMaps({ de: ici ? null : r.pts[0], a: r.pts.at(-1), passages: r.passage.pts, sansPeage: c.toll < 0.5 });
 }
 
 function gpx(r, n) {
@@ -153,7 +153,7 @@ function render() {
   // Les trajets montrés se nomment par leur ville repère la plus distinctive (« par Saumur ») ; « Trajet N » sinon.
   const montres = [...utiles, ...autres];
   for (const x of montres) if (!x.r.villes) x.r.villes = villesTraversees(x.r.pts);   // calculé une fois par trajet
-  const noms = new Map(nomsTrajets(montres.map(x => x.r.villes)).map((n, j) => [montres[j].id, n]));
+  const noms = new Map(nomsTrajets(montres.map(x => x.r.villes), montres.map(x => x.r.refs)).map((n, j) => [montres[j].id, n]));
   const nom = x => noms.get(x.id) || `Trajet ${numero.get(x.id)}`;
   for (const b of document.querySelectorAll('#lim button')) b.setAttribute('aria-pressed', String(b.dataset.l === (isFinite(limite) ? String(limite) : 'inf')));
 
@@ -189,7 +189,7 @@ function render() {
 <div class="tete-tr"><span class="prix">${fmtE(c.eur)}</span><span class="duree">${fmtT(r.min)}</span><span class="km">· ${Math.round(r.km)} km</span><span class="role">${role || nom({ id })}</span></div>
 ${jauge(c, rapide.c.eur)}
 <div class="refs">${refs}${via}<span class="fin">${ecartV}<svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></span></div>
-<div class="act">${best.id === id ? '' : `<a class="maps" href="${gmaps(r, rapide.r)}" target="_blank" rel="noopener">Ouvrir dans Maps</a>`}
+<div class="act">${best.id === id ? '' : `<a class="maps" href="${gmaps({ r, c }, rapide.r)}" target="_blank" rel="noopener">Ouvrir dans Maps</a>`}
 <details class="dt"${hot === id ? ' open' : ''}><summary>Détail du prix</summary>${r.explore ? '<p>Trouvé par l\'exploration.</p>' : ''}
 ${r.mixte ? `<p>${esc(r.mixte.texte)}</p>` : ''}<div class="repart-dt">${anneau(c, rapide.c.eur, { taille: 64, centre: false })}<div>
 <p><i class="pt pt-conso"></i>Conso <b>${p.conso} €</b></p>
@@ -252,7 +252,7 @@ ${r.mixte ? `<p>${esc(r.mixte.texte)}</p>` : ''}<div class="repart-dt">${anneau(
 <div class="ligne"><span class="prix">${pb.tot} €</span><span class="duree">${fmtT(best.r.min)}</span></div><div class="chips">${ecart}${marge}</div></div>
 ${anneau(best.c, rapide.c.eur, { etiquette, taille: 88 })}</div>
 <div class="repart" aria-hidden="true"><span><i class="pt pt-conso"></i>Conso <b>${pb.conso} €</b></span><span><i class="pt pt-usure"></i>Usure <b>${pb.usure} €</b></span>${pb.peage >= 1 ? `<span><i class="pt pt-peage"></i>Péage <b>${pb.peage} €</b></span>` : `<span>${s.rembourse && best.c.toll >= 0.5 ? 'Péage remboursé' : 'Sans péage'}</span>`}${eco >= 1 ? `<span><i class="pt pt-eco"></i>Économie <b>${eco} €</b></span>` : ''}</div>`;
-  synth += `<div class="actions"><a class="maps" href="${gmaps(best.r, rapide.r)}" target="_blank" rel="noopener">Ouvrir dans Maps</a><button type="button" class="icone partage" id="partage" aria-label="Partager ce trajet"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 13v6a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-6M12 3v12M7 8l5-5 5 5"/></svg></button></div>`;
+  synth += `<div class="actions"><a class="maps" href="${gmaps(best, rapide.r)}" target="_blank" rel="noopener">Ouvrir dans Maps</a><button type="button" class="icone partage" id="partage" aria-label="Partager ce trajet"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 13v6a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-6M12 3v12M7 8l5-5 5 5"/></svg></button></div>`;
   if (sugg) synth += `<div class="sep"></div><div class="ligne"><span class="tag">Au-delà</span><button type="button" class="sel droite" data-sel="${sugg.id}">${esc(nom(sugg))} · −${ecartE(best.c.eur, sugg.c.eur)} € pour +${fmtT(sugg.r.min - best.r.min)}</button></div>`;
   compte = routes.length;
   synth += blocAvancement(neufs.length);
@@ -308,7 +308,9 @@ function draw() {
       .bindTooltip(esc(nom), { permanent: true, direction: 'top', offset: [0, -8], className: 'etiquette' }).addTo(calque);
   }
   // On recadre quand de nouveaux trajets élargissent la zone, pas à chaque sélection (pour garder ton zoom).
-  const tous = L.latLngBounds(routes.flatMap(r => [r.pts[0], r.pts.at(-1), ...allege(r.pts).filter((_, j) => j % 20 === 0)]));
+  // Cadrage sur les trajets dessinés : ceux qu'on cache ne doivent pas faire dézoomer.
+  const dessines = voirDomines ? routes : visibles;
+  const tous = L.latLngBounds(dessines.flatMap(r => [r.pts[0], r.pts.at(-1), ...allege(r.pts).filter((_, j) => j % 20 === 0)]));
   const cle = tous.toBBoxString();
   if (cle !== cadrage) { cadrage = cle; carte.fitBounds(tous, marges()); }
 }

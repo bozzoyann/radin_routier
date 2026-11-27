@@ -192,13 +192,17 @@ test('choixLimite : le moins cher dans la limite, chaque pas rapportant au moins
 });
 
 test('choixLimite : on avance pas à pas, et la suggestion va jusqu\'à 3 fois la limite si vrai gain (20 %)', () => {
-  // +8 min pour −24 €, puis +1 h 21 pour −27 € de plus (pile 1 € toutes les 3 min).
+  // +8 min pour −24 €, puis +1 h 21 pour −27 € de plus (1 € toutes les 3 min).
   const t = [{ min: 230, eur: 115 }, { min: 238, eur: 91 }, { min: 319, eur: 64 }];
   assert.deepEqual(choixLimite(t, 90), { choix: 2, suggestion: -1 });
   // Limite 30 : rien jusqu'à 60 min ; jusqu'à 90 min, 64 € fait −30 % sur 91 € : suggéré.
   assert.deepEqual(choixLimite(t, 30), { choix: 1, suggestion: 2 });
-  // Un pas qui rapporte gros (3 € en 1 min), puis 9 € pour 29 min de plus : pas assez, on s'arrête.
-  assert.deepEqual(choixLimite([{ min: 0, eur: 100 }, { min: 1, eur: 97 }, { min: 30, eur: 88 }], 60).choix, 1);
+  // Un pas qui rapporte gros (3 € en 1 min), puis 7 € pour 29 min de plus : pas assez (il en faudrait 8), on s'arrête.
+  assert.deepEqual(choixLimite([{ min: 0, eur: 100 }, { min: 1, eur: 97 }, { min: 30, eur: 90 }], 60).choix, 1);
+  // Cas réel : −15 € pour +47 min (1 € toutes les 3,3 min) dans 1 h acceptée : recommandé.
+  assert.equal(choixLimite([{ min: 86, eur: 35 }, { min: 133, eur: 20 }], 60).choix, 1);
+  // −7 € pour +1 h : toujours refusé.
+  assert.equal(choixLimite([{ min: 100, eur: 50 }, { min: 160, eur: 43 }], 60).choix, 0);
 });
 
 test('choixLimite : entre 2 et 3 fois la limite, un petit gain ne suffit pas', () => {

@@ -225,8 +225,8 @@ export const VRAI_GAIN = 0.20;
 /** Garde-fou du choix (radin, mais pas trop) : chaque pas doit faire gagner au moins 2 €, quel que soit
  *  le prix du trajet (l'erreur sur l'écart vient de la partie des trajets qui diffère, pas du prix total)… */
 export const PAS_EUR = 2;
-/** …et au moins 1 € toutes les 3 minutes perdues (soit 20 € de l'heure). */
-export const MIN_PAR_EURO = 3;
+/** …et au moins 1 € toutes les 4 minutes perdues (soit 15 € de l'heure ; 3 min refusait −15 € pour +47 min, 27/11/2026). */
+export const MIN_PAR_EURO = 4;
 
 /** Vrai si passer du trajet `a` au trajet `b`, plus lent, rapporte assez (voir PAS_EUR et MIN_PAR_EURO). */
 export function rentable(a, b) {
@@ -255,7 +255,7 @@ function avancer(items, depart, maxMin) {
  * Le choix dans la limite de temps de l'utilisateur, et une suggestion au-delà.
  * `items` : les trajets gardés ([{min, eur}]), triés du plus rapide au plus lent ; `limite` : minutes en plus
  * acceptées (Infinity : peu importe). Le choix est le trajet le moins cher qu'on atteint dans la limite en
- * partant du plus rapide, chaque pas rapportant au moins 2 € et 1 € toutes les 3 min (voir rentable).
+ * partant du plus rapide, chaque pas rapportant au moins 2 € et 1 € toutes les 4 min (voir rentable).
  * La suggestion continue de la même façon jusqu'à 2 fois la limite ; jusqu'à 3 fois seulement si elle fait
  * économiser au moins 20 % (VRAI_GAIN) du prix du choix. -1 s'il n'y en a pas.
  */

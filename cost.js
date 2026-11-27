@@ -56,8 +56,9 @@ export function refsOf(man, minKm = 5, max = 6) {
 }
 
 /** Résume un trajet Valhalla : distances par type de route, péage, durée, tracé, entrées et sorties d'autoroute.
- *  Le temps hors autoroute est corrigé par `k` (voir K_HORS_AUTOROUTE ; 1 : temps brut de Valhalla). */
-export function analyse(trip, k = K_HORS_AUTOROUTE) {
+ *  Le temps hors autoroute est corrigé par `k` (voir K_HORS_AUTOROUTE ; {k: 1} : temps brut de Valhalla).
+ *  Réglage passé dans un objet : `liste.map(analyse)` passe l'indice en 2e argument, qui doit être sans effet. */
+export function analyse(trip, { k = K_HORS_AUTOROUTE } = {}) {
   const leg = trip.legs[0], man = leg.maneuvers || [], pts = decode(leg.shape);
   const km = { autoroute: 0, ville: 0, route: 0 };
   let tollKm = 0, sum = 0, avant = null;

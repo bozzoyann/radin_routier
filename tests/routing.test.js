@@ -76,16 +76,15 @@ test('lieu : département retrouvé sans code postal (ville entière)', () => {
 });
 
 test('liens de partage : fabriquer, relire, nettoyer les lieux', () => {
-  const lien = lienTrajet('https://exemple.fr/radin/', 'Place du Capitole, Toulouse', 'Lyon', 60);
-  assert.equal(lien, 'https://exemple.fr/radin/?de=Place+du+Capitole%2C+Toulouse&a=Lyon&temps=60');
-  assert.deepEqual(lireTrajet(new URL(lien).search), { de: 'Place du Capitole, Toulouse', a: 'Lyon', limite: 60 });
-  assert.deepEqual(lireTrajet('?de=Rouen&a=Paris&temps=inf'), { de: 'Rouen', a: 'Paris', limite: Infinity });
-  assert.deepEqual(lireTrajet('?de=Rouen&a=Paris'), { de: 'Rouen', a: 'Paris', limite: null });
-  assert.deepEqual(lireTrajet('?de=Rouen&a=Paris&temps=abc'), { de: 'Rouen', a: 'Paris', limite: null });
+  const lien = lienTrajet('https://exemple.fr/radin/', { nom: 'Place du Capitole, Toulouse', pos: '43.6045,1.4442' }, { nom: 'Lyon' }, 60);
+  assert.equal(lien, 'https://exemple.fr/radin/?de=Place+du+Capitole%2C+Toulouse&dep=43.6045%2C1.4442&a=Lyon&temps=60');
+  assert.deepEqual(lireTrajet(new URL(lien).search), { de: { nom: 'Place du Capitole, Toulouse', lat: 43.6045, lon: 1.4442 }, a: { nom: 'Lyon' }, limite: 60 });
+  assert.deepEqual(lireTrajet('?de=Rouen&a=Paris&temps=inf'), { de: { nom: 'Rouen' }, a: { nom: 'Paris' }, limite: Infinity });
+  assert.deepEqual(lireTrajet('?de=Rouen&a=Paris&dep=n%27importe+quoi'), { de: { nom: 'Rouen' }, a: { nom: 'Paris' }, limite: null });
+  assert.deepEqual(lireTrajet('?de=Rouen&a=Paris&temps=abc').limite, null);
   assert.equal(lireTrajet('?de=Rouen'), null);
   assert.equal(lireTrajet(''), null);
-  assert.equal(lieuPourLien(null, 'Lyon (69)'), 'Lyon');
-  assert.equal(lieuPourLien(null, 'Ajaccio (2A)'), 'Ajaccio');
-  assert.equal(lieuPourLien(null, 'Place Bellecour'), 'Place Bellecour');
-  assert.equal(lieuPourLien({ name: 'Ma position', lat: 45.123456, lon: 4.987654 }, 'Ma position'), '45.123,4.988');
+  assert.deepEqual(lieuPourLien(null, 'Lyon (69)'), { nom: 'Lyon' });
+  assert.deepEqual(lieuPourLien({ name: 'Ajaccio (2A)', lat: 41.919, lon: 8.7386 }, 'Ajaccio (2A)'), { nom: 'Ajaccio', pos: '41.9190,8.7386' });
+  assert.deepEqual(lieuPourLien({ name: 'Ma position', lat: 45.123456, lon: 4.987654 }, 'Ma position'), { nom: 'Position partagée', pos: '45.123,4.988' });
 });

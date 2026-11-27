@@ -90,25 +90,38 @@ export async function route(a, b, prof, fetchFn = fetch) {
   return [d.trip, ...(d.alternates || []).map(x => x.trip)];
 }
 
-/** Lien de partage d'un trajet : …?de=…&a=…&temps=… (temps : minutes en plus acceptées, « inf » : peu importe). */
+/**
+ * Lien de partage d'un trajet : …?de=…&dep=lat,lon&a=…&arr=lat,lon&temps=… (temps : minutes en plus acceptées,
+ * « inf » : peu importe). Les coordonnées évitent qu'un nom soit mal retrouvé (« Gare d'Orléans » est aussi
+ * l'ancien nom de Paris-Austerlitz). `de`, `a` : {nom, pos} (pos : « lat,lon » ou absent).
+ */
 export function lienTrajet(base, de, a, limite) {
-  return `${base}?${new URLSearchParams({ de, a, temps: isFinite(limite) ? String(limite) : 'inf' })}`;
+  const q = new URLSearchParams({ de: de.nom });
+  if (de.pos) q.set('dep', de.pos);
+  q.set('a', a.nom);
+  if (a.pos) q.set('arr', a.pos);
+  q.set('temps', isFinite(limite) ? String(limite) : 'inf');
+  return `${base}?${q}`;
 }
 
-/** Lit un lien de partage (la partie « ?… » de l'adresse). Renvoie {de, a, limite} (limite : null si absente), ou null. */
+/** Lit un lien de partage (la partie « ?… » de l'adresse). Renvoie {de, a, limite} ou null ;
+ *  de, a : {nom, lat, lon} (coordonnées absentes si le lien n'en a pas) ; limite : null si absente. */
 export function lireTrajet(search) {
-  const q = new URLSearchParams(search), de = (q.get('de') || '').trim(), a = (q.get('a') || '').trim();
-  if (!de || !a) return null;
+  const q = new URLSearchParams(search), nomDe = (q.get('de') || '').trim(), nomA = (q.get('a') || '').trim();
+  if (!nomDe || !nomA) return null;
+  const lieu = (nom, pos) => { const p = pos && parseLatLon(pos); return p ? { nom, lat: p.lat, lon: p.lon } : { nom }; };
   const t = q.get('temps');
   const limite = t === 'inf' ? Infinity : t !== null && t !== '' && Number.isFinite(+t) && +t >= 0 ? +t : null;
-  return { de, a, limite };
+  return { de: lieu(nomDe, q.get('dep')), a: lieu(nomA, q.get('arr')), limite };
 }
 
 /**
- * Le texte d'un lieu dans un lien : sans le département ajouté à l'affichage (« Lyon (69) » → « Lyon ») ;
- * « Ma position » devient des coordonnées arrondies à 100 m environ (3 décimales).
+ * Un lieu pour un lien : son nom sans le département ajouté à l'affichage (« Lyon (69) » → « Lyon ») et ses
+ * coordonnées à 4 décimales (une dizaine de mètres). « Ma position » devient « Position partagée », arrondie
+ * à 3 décimales (une centaine de mètres). `l` : le lieu choisi ({lat, lon, name}) ou null ; `texte` : le champ.
  */
 export function lieuPourLien(l, texte) {
-  if (l && l.name === 'Ma position') return `${l.lat.toFixed(3)},${l.lon.toFixed(3)}`;
-  return String(texte).replace(/\s*\((\d{2}|2A|2B)\)\s*$/, '');
+  if (l && l.name === 'Ma position') return { nom: 'Position partagée', pos: `${l.lat.toFixed(3)},${l.lon.toFixed(3)}` };
+  const nom = String(texte).replace(/\s*\((\d{2}|2A|2B)\)\s*$/, '');
+  return l ? { nom, pos: `${l.lat.toFixed(4)},${l.lon.toFixed(4)}` } : { nom };
 }

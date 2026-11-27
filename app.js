@@ -9,7 +9,7 @@ import { TARIFS_KM } from './peages-data.js';
 import { prixDuJour } from './carburant.js';
 
 /** Version affichée en haut de la page : à augmenter à chaque modification publiée. */
-export const VERSION = '1.25.0';
+export const VERSION = '1.25.1';
 export const VERSION_DATE = '27/11/2026';
 
 const $ = id => document.getElementById(id);
@@ -663,8 +663,10 @@ const od = store.get('vpt-od');
 if (od) { $('from').value = od.from || ''; $('to').value = od.to || ''; choix = { from: od.cfrom || null, to: od.cto || null }; }
 $('f').addEventListener('submit', run);
 if (lien) {
-  // Lien reçu : on remplit, on nettoie l'adresse (recharger la page ne relance pas tout), puis on lance la recherche.
-  $('from').value = lien.de; $('to').value = lien.a; choix = { from: null, to: null };
+  // Lien reçu : on remplit (avec les coordonnées du lien s'il en a : pas de recherche d'adresse), on nettoie
+  // l'adresse (recharger la page ne relance pas tout), puis on lance la recherche.
+  const lieu = l => (l.lat != null ? { lat: l.lat, lon: l.lon, name: l.nom } : null);
+  $('from').value = lien.de.nom; $('to').value = lien.a.nom; choix = { from: lieu(lien.de), to: lieu(lien.a) };
   if (lien.limite !== null) limite = lien.limite;
   history.replaceState(null, '', location.pathname);
   $('f').requestSubmit();

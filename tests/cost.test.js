@@ -45,7 +45,7 @@ test('analyse : répartition et recalage sur la distance du résumé', () => {
     { length: 100, time: 3600, highway: true, toll: true }, // autoroute à péage
     { length: 50, time: 2400 },                             // 75 km/h : route
     { length: 10, time: 1200 }                              // 30 km/h : ville
-  ], { length: 176, time: 7200, has_toll: true }), 1);   // temps brut (sans correction)
+  ], { length: 176, time: 7200, has_toll: true }), { k: 1 });   // temps brut (sans correction)
   // Somme des manœuvres 160 km, résumé 176 km : facteur 1,1.
   near(r.hwKm, 110); near(r.routeKm, 55); near(r.villeKm, 11); near(r.tollKm, 110);
   near(r.hwKm + r.routeKm + r.villeKm, r.km);
@@ -321,6 +321,13 @@ test('analyse : temps hors autoroute corrigé (Valhalla y est trop lent), autoro
   const r = analyse(t);
   near(r.min, 60 + (60 + 40) * 0.74);           // 134 min au lieu de 160
   near(r.villeKm, 0); near(r.routeKm, 80);      // la conso de ville ne s'applique plus à la nationale
-  const brut = analyse(t, 1);
+  const brut = analyse(t, { k: 1 });
   near(brut.min, 160); near(brut.villeKm, 30);
+});
+
+test('analyse : appelée par liste.map(analyse), l\'indice ne change rien (bug de la v1.24.0 : « 0 min »)', () => {
+  const t = trip([{ length: 100, time: 3600, highway: true }, { length: 50, time: 3600 }], { length: 150, time: 7200 });
+  const seule = analyse(t);
+  for (const r of [t, t, t].map(analyse)) { near(r.min, seule.min); near(r.routeKm, seule.routeKm); }
+  near(seule.min, 60 + 60 * 0.74);
 });

@@ -9,7 +9,7 @@ import { TARIFS_KM } from './peages-data.js';
 import { prixDuJour } from './carburant.js';
 
 /** Version affichée en haut de la page : à augmenter à chaque modification publiée. */
-export const VERSION = '1.26.0';
+export const VERSION = '1.26.1';
 export const VERSION_DATE = '27/11/2026';
 
 const $ = id => document.getElementById(id);
@@ -663,13 +663,15 @@ const od = store.get('vpt-od');
 if (od) { $('from').value = od.from || ''; $('to').value = od.to || ''; choix = { from: od.cfrom || null, to: od.cto || null }; }
 $('f').addEventListener('submit', run);
 if (lien) {
-  // Lien reçu : on remplit (avec les coordonnées du lien s'il en a : pas de recherche d'adresse), on nettoie
-  // l'adresse (recharger la page ne relance pas tout), puis on lance la recherche.
+  // Lien reçu : on remplit (avec les coordonnées du lien s'il en a : pas de recherche d'adresse) et on nettoie
+  // l'adresse (recharger la page ne relance rien). La recherche attend « Comparer » : le temps de vérifier
+  // sa voiture et le mode pro, réglages ouverts.
   const lieu = l => (l.lat != null ? { lat: l.lat, lon: l.lon, name: l.nom } : null);
   $('from').value = lien.de.nom; $('to').value = lien.a.nom; choix = { from: lieu(lien.de), to: lieu(lien.a) };
   if (lien.limite !== null) limite = lien.limite;
   history.replaceState(null, '', location.pathname);
-  $('f').requestSubmit();
+  $('regl').open = true;
+  $('st').className = ''; $('st').textContent = 'Trajet reçu : vérifie ta voiture et le mode pro, puis « Comparer ».';
 }
 $('swap').addEventListener('click', () => { const t = $('from').value; $('from').value = $('to').value; $('to').value = t; choix = { from: choix.to, to: choix.from }; });
 $('list').addEventListener('click', e => {

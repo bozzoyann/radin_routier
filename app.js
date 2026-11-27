@@ -9,7 +9,7 @@ import { TARIFS_KM } from './peages-data.js';
 import { prixDuJour } from './carburant.js';
 
 /** Version affichée en haut de la page : à augmenter à chaque modification publiée. */
-export const VERSION = '1.22.0';
+export const VERSION = '1.23.0';
 export const VERSION_DATE = '27/11/2026';
 
 const $ = id => document.getElementById(id);
@@ -148,21 +148,15 @@ function render() {
   // Un trajet : une carte avec sa pastille de couleur, prix puis durée, routes et villes, actions au toucher.
   const carte = ({ r, id, c, dom: estDomine }) => {
     const role = best.id === id ? 'Ton choix' : id === rapide.id ? 'Le plus rapide' : id === utiles.at(-1).id ? 'Le moins cher' : '';
-    let note = '';
+    // Variante intermédiaire : son écart avec le trajet de l'escalier juste avant, en bout de 2e ligne.
+    let ecartV = '';
     if (estDomine) {
-      // Variante intermédiaire, comparée au plus proche en durée des deux trajets qui l'encadrent.
-      const prec = avant({ r }), suiv = utiles[utiles.indexOf(prec) + 1];
-      if (suiv && suiv.r.min - r.min < r.min - prec.r.min) {
-        note = `<p class="note">${fmtT(suiv.r.min - r.min)} plus rapide que le trajet ${numero.get(suiv.id)}, mais ${ecartE(c.eur, suiv.c.eur)} € plus cher.</p>`;
-      } else {
-        const de = ecartE(prec.c.eur, c.eur);
-        note = `<p class="note">${fmtT(r.min - prec.r.min)} de plus que le trajet ${numero.get(prec.id)}, pour ${de < 1 ? 'à peine moins cher' : `seulement ${de} € de moins`}.</p>`;
-      }
+      const prec = avant({ r }), de = ecartE(prec.c.eur, c.eur);
+      ecartV = `<span class="ecart-v">+${fmtT(r.min - prec.r.min)} · ${de >= 1 ? `−${de} €` : 'même prix'}</span>`;
     }
-    if (r.explore) note += '<p class="note">Trouvé par l\'exploration.</p>';
     if (!r.villes) r.villes = villesTraversees(r.pts);   // calculé une fois par trajet
     const via = r.villes.length ? `<span class="via">${r.villes.map(esc).join(' · ')}</span>` : '';
-    const refs = r.refs.slice(0, 4).map(x => `<span class="c${x[0] === 'D' ? ' cD' : ''}">${esc(x)}</span>`).join('');
+    const refs = r.refs.slice(0, 3).map(x => `<span class="c${x[0] === 'D' ? ' cD' : ''}">${esc(x)}</span>`).join('');
     const payants = r.ouvrages.filter(o => !o.gratuit);
     const dont = payants.map(o => `dont ${esc(o.nom)} ${fmtEur(o.prix)}${o.verifier ? ' (à vérifier)' : ''}`).join(', ');
     const gratuits = r.ouvrages.filter(o => o.gratuit).map(o => `${esc(o.nom)} gratuit dans ce sens`).join(', ');
@@ -179,11 +173,11 @@ function render() {
     return `<li class="${cls}" data-i="${id}" style="--rc:${couleur}"${estDomine && !voirDomines ? ' hidden' : ''}>
 <div class="rail"><span class="point" style="background:${couleur}"></span></div>
 <div class="corps">
-<div class="tete-tr"><span class="prix">${fmtE(c.eur)}</span><span class="duree">${fmtT(r.min)}</span><span class="role">${role || `Trajet ${numero.get(id)}`}</span></div>
+<div class="tete-tr"><span class="prix">${fmtE(c.eur)}</span><span class="duree">${fmtT(r.min)}</span><span class="km">· ${Math.round(r.km)} km</span><span class="role">${role || `Trajet ${numero.get(id)}`}</span></div>
 ${jauge(c, rapide.c.eur)}
-<div class="refs">${refs}${via}</div>${note}
+<div class="refs">${refs}${via}<span class="fin">${ecartV}<svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></span></div>
 <div class="act">${best.id === id ? '' : `<a class="maps" href="${gmaps(r)}" target="_blank" rel="noopener">Ouvrir dans Maps</a>`}
-<details class="dt"><summary>Détail du prix</summary>
+<details class="dt"${hot === id ? ' open' : ''}><summary>Détail du prix</summary>${r.explore ? '<p>Trouvé par l\'exploration.</p>' : ''}
 ${r.mixte ? `<p>${esc(r.mixte.texte)}</p>` : ''}<div class="repart-dt">${anneau(c, rapide.c.eur, { taille: 64, centre: false })}<div>
 <p><i class="pt pt-conso"></i>Conso <b>${p.conso} €</b></p>
 <p><i class="pt pt-usure"></i>Usure <b>${p.usure} €</b> <small>(${Math.round(r.km)} km)</small></p>

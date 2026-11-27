@@ -9,7 +9,7 @@ import { TARIFS_KM } from './peages-data.js';
 import { prixDuJour } from './carburant.js';
 
 /** Version affichée en haut de la page : à augmenter à chaque modification publiée. */
-export const VERSION = '1.21.0';
+export const VERSION = '1.21.1';
 export const VERSION_DATE = '27/11/2026';
 
 const $ = id => document.getElementById(id);
@@ -53,7 +53,7 @@ function save() {
   if (!$('prixauto').checked) prices[p.carbu] = s.prix;   // le prix du jour ne remplace pas ton prix manuel
   store.set(PKEY, profils);
   $('pro').hidden = !s.rembourse;
-  store.set(CKEY, { peage: s.peage, ik: s.ik, rembourse: s.rembourse, limite: isFinite(limite) ? limite : null, prices, prixAuto: $('prixauto').checked });
+  store.set(CKEY, { peage: s.peage, ik: s.ik, ikDef: DEF.ik, rembourse: s.rembourse, limite: isFinite(limite) ? limite : null, prices, prixAuto: $('prixauto').checked });
   const fr = n => String(n).replace('.', ',');
   $('sum').textContent = `${p.nom} · ${fr(s.prix)} €/L · ${fr(Math.round(s.usure * 1000) / 10)} c€/km${s.rembourse ? ' · péage remboursé' : ''}`;
 }
@@ -496,6 +496,8 @@ function chargerReglages() {
     profils = { list: [p], actif: p.id };
     $('regl').open = true;   // première visite : on montre les réglages
   }
+  // Taux d'IK resté sur l'ancien défaut (0,636, 5 CV) sans avoir été touché : il passe au nouveau défaut.
+  if (c.ik != null && c.ik === (c.ikDef ?? 0.636) && c.ikDef !== DEF.ik) c.ik = DEF.ik;
   prices = c.prices || {};
   for (const k of CRIT_KEYS) $(k).value = c[k] != null ? c[k] : DEF[k];
   limite = 'limite' in c ? (c.limite === null ? Infinity : c.limite) : LIMITE_DEF;

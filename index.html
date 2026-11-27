@@ -53,11 +53,11 @@
 </div>
 <label>Nom du profil<input id="pnom" maxlength="40" autocomplete="off"></label>
 <div class="deux">
-<label>Carburant<select id="carbu"><option>SP95-E10</option><option>SP98</option><option>Gazole</option><option>E85</option><option>GPL</option></select></label>
-<label><span id="prixl">Prix du SP95-E10</span><span class="u"><input id="prix" type="number" step="0.001" min="0" inputmode="decimal"><span>€/L</span></span></label>
+<label>Carburant<select id="carbu"><option>SP95-E10</option><option>SP98</option><option>Gazole</option><option>E85</option><option>GPL</option><option value="Électrique">Électrique (essai)</option></select></label>
+<label><span id="prixl">Prix du SP95-E10</span><span class="u"><input id="prix" type="number" step="0.001" min="0" inputmode="decimal"><span id="prixu">€/L</span></span></label>
 </div>
 <div class="prixauto"><label class="chk"><input type="checkbox" id="prixauto" checked> Prix du jour</label><small id="prixinfo"></small></div>
-<div class="conso"><span class="conso-titre">Consommation (L/100 km)</span>
+<div class="conso"><span class="conso-titre" id="consot">Consommation (L/100 km)</span>
 <div class="trois">
 <label>Ville<input id="cville" type="number" step="0.1" min="0" inputmode="decimal"></label>
 <label>Route<input id="croute" type="number" step="0.1" min="0" inputmode="decimal"></label>
@@ -109,7 +109,7 @@
 <details class="calcul">
 <summary>Comment c'est calculé<svg class="pic chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></summary>
 <dl>
-<dt>Carburant</dt><dd>Consommation ville, route ou autoroute selon chaque tronçon (ville : moins de 50 km/h de moyenne), au prix du jour des stations autour du départ, ou à ton prix.</dd>
+<dt>Carburant</dt><dd>Consommation ville, route ou autoroute selon chaque tronçon (ville : moins de 50 km/h de moyenne), au prix du jour des stations autour du départ, ou à ton prix. Voiture électrique (essai) : consommation en kWh/100 km et prix du kWh saisis à la main.</dd>
 <dt>Usure</dt><dd>Ce qui s'use avec les kilomètres : pneus, freins, embrayage, pièces, décote. 7 c€/km par défaut, réglable.</dd>
 <dt>Péage</dt><dd>Tarif réel au kilomètre de 40 autoroutes (APRR, AREA, VINCI), estimé pour Sanef et SAPN, prix exact de 10 ponts et tunnels (viaduc de Millau, pont de Normandie…), tarifs 2026. Ailleurs, 0,09 €/km. C'est une approximation, pas le tarif exact de la barrière. « Péage remboursé » (déplacement pro) le retire des prix et du classement ; il reste indiqué dans le détail.</dd>
 <dt>Pro</dt><dd>Ta marge : la note de frais (IK sur la distance du trajet le plus rapide, plus le péage) moins le coût réel (conso, usure, péage). Les IK étant fixes, le trajet le moins cher est aussi celui qui te rapporte le plus.</dd>

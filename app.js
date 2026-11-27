@@ -9,13 +9,21 @@ import { TARIFS_KM } from './peages-data.js';
 import { prixDuJour } from './carburant.js';
 
 /** Version affichée en haut de la page : à augmenter à chaque modification publiée. */
-export const VERSION = '1.29.0';
+export const VERSION = '1.30.0';
 export const VERSION_DATE = '27/11/2026';
 
 const $ = id => document.getElementById(id);
 $('ver').textContent = `v${VERSION} · ${VERSION_DATE}`;
 const COLORS = ['#2a78d6', '#eb6834', '#1baf7a', '#c98500', '#d55181', '#6250d6', '#e34948'];
-const FUEL_DEF = { 'SP95-E10': 2.05, 'Gazole': 2.20 };
+const FUEL_DEF = { 'SP95-E10': 2.05, 'Gazole': 2.20, 'Électrique': 0.25 };
+// Voiture électrique (prototype) : le « carburant » est le kWh, la conso en kWh/100 km ; pas de prix du jour.
+const ELEC = 'Électrique', CONSO_ELEC = { cville: 15, croute: 14, cauto: 19 };
+const unite = c => (c === ELEC ? 'kWh' : 'L');
+function majLibelles(c) {
+  $('prixl').textContent = c === ELEC ? 'Prix du kWh' : `Prix du ${c}`;
+  $('prixu').textContent = `€/${unite(c)}`;
+  $('consot').textContent = `Consommation (${unite(c)}/100 km)`;
+}
 const PKEY = 'rr-profils', CKEY = 'rr-reglages';
 const KEYS = Object.keys(DEF);   // champs du formulaire
 const PROF_KEYS = ['usure', 'cville', 'croute', 'cauto'];   // propres à chaque voiture
@@ -56,7 +64,7 @@ function save() {
   $('proRapide').setAttribute('aria-pressed', String(s.rembourse));
   store.set(CKEY, { peage: s.peage, ik: s.ik, ikDef: DEF.ik, rembourse: s.rembourse, limite: isFinite(limite) ? limite : null, prices, prixAuto: $('prixauto').checked });
   const fr = n => String(n).replace('.', ',');
-  $('sum').textContent = `${p.nom} · ${fr(s.prix)} €/L · ${fr(Math.round(s.usure * 1000) / 10)} c€/km${s.rembourse ? ' · péage remboursé' : ''}`;
+  $('sum').textContent = `${p.nom} · ${fr(s.prix)} €/${unite(p.carbu)} · ${fr(Math.round(s.usure * 1000) / 10)} c€/km${s.rembourse ? ' · péage remboursé' : ''}`;
 }
 
 function gmaps(r, ref) {
@@ -515,6 +523,10 @@ const prixManuel = c => (prices[c] != null ? prices[c] : FUEL_DEF[c] != null ? F
 let demandePrix = 0;
 async function majPrixDuJour(pos) {
   const c = actif().carbu, moi = ++demandePrix;
+  if (c === ELEC) {   // pas de flux officiel pour la recharge : prix saisi
+    $('prixinfo').textContent = 'Pas de prix du jour pour l\'électricité : prix saisi (environ 0,25 €/kWh à la maison, 0,50 € et plus sur borne rapide).';
+    $('prix').disabled = false; return;
+  }
   $('prixinfo').textContent = 'Recherche du prix du jour…';
   const r = await prixDuJour(c, pos);
   if (moi !== demandePrix || !$('prixauto').checked) return;   // une demande plus récente, ou mode manuel entre-temps
@@ -533,7 +545,7 @@ function afficherProfil() {
   $('profRapide').innerHTML = $('prof').innerHTML; $('profRapide').value = p.id;
   $('pnom').value = p.nom;
   $('carbu').value = p.carbu;
-  $('prixl').textContent = `Prix du ${p.carbu}`;
+  majLibelles(p.carbu);
   $('prix').value = prixManuel(p.carbu);
   if ($('prixauto').checked) majPrixDuJour();
   for (const k of PROF_KEYS) $(k).value = p[k] != null ? p[k] : DEF[k];
@@ -562,8 +574,12 @@ $('pdel').addEventListener('click', () => {
 });
 $('carbu').addEventListener('change', () => {
   if (!$('prixauto').checked) prices[actif().carbu] = num('prix');
-  const c = $('carbu').value; actif().carbu = c;
-  $('prixl').textContent = `Prix du ${c}`;
+  const c = $('carbu').value, avant = actif().carbu; actif().carbu = c;
+  // Passage à l'électrique (ou retour au thermique) : si la conso est restée celle par défaut, on prend
+  // celle par défaut de l'autre motorisation.
+  const parDefaut = (from) => ['cville', 'croute', 'cauto'].every(k => num(k) === (from === ELEC ? CONSO_ELEC[k] : DEF[k]));
+  if ((c === ELEC) !== (avant === ELEC) && parDefaut(avant)) for (const k of ['cville', 'croute', 'cauto']) $(k).value = c === ELEC ? CONSO_ELEC[k] : DEF[k];
+  majLibelles(c);
   $('prix').value = prixManuel(c);
   if ($('prixauto').checked) majPrixDuJour(ends && ends.a);
   render();

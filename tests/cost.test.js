@@ -330,3 +330,10 @@ test('analyse : appelée par liste.map(analyse), l\'indice ne change rien (bug d
   for (const r of [t, t, t].map(analyse)) { near(r.min, seule.min); near(r.routeKm, seule.routeKm); }
   near(seule.min, 60 + 60 * K_ROUTE);
 });
+
+test('cost : voiture électrique (prototype), même calcul en kWh', () => {
+  const r = { km: 100, min: 75, hwKm: 50, routeKm: 40, villeKm: 10, tollKm: 0 };
+  const c = cost(r, { ...DEF, prix: 0.25, cville: 15, croute: 14, cauto: 19, usure: 0.05 });
+  near(c.litres, (10 * 15 + 40 * 14 + 50 * 19) / 100);   // 16,6 kWh
+  near(c.fuel, 16.6 * 0.25); near(c.eur, 16.6 * 0.25 + 100 * 0.05);
+});

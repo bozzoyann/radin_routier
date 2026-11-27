@@ -86,7 +86,8 @@ export function dedupe(list, tol = 0.01) {
   return out;
 }
 
-/** Coût d'un trajet analysé avec les réglages `s` (voir DEF), en euros, poste par poste. */
+/** Coût d'un trajet analysé avec les réglages `s` (voir DEF), en euros, poste par poste.
+ *  `s.rembourse` (déplacement pro) : le péage est remboursé, il reste calculé (`toll`) mais sort du prix (`eur`). */
 export function cost(r, s, tarifs = TARIFS_KM) {
   const litres = (r.villeKm * s.cville + r.routeKm * s.croute + r.hwKm * s.cauto) / 100;
   // Péage : chaque tronçon payant au tarif réel de son autoroute s'il est connu (peages-data.js), sinon au tarif
@@ -104,8 +105,8 @@ export function cost(r, s, tarifs = TARIFS_KM) {
   // Kilomètres payants sans tronçon identifié (résumé « péage » sans manœuvre marquée) : tarif estimé.
   const fuel = litres * s.prix, wear = r.km * s.usure;
   const toll = peageTroncons + Math.max(0, r.tollKm - kmTroncons) * s.peage + prixOuv;
-  const eur = fuel + wear + toll;
-  return { litres, fuel, wear, toll, eur, tarifsReels: [...reels] };
+  const eur = fuel + wear + (s.rembourse ? 0 : toll);
+  return { litres, fuel, wear, toll, eur, rembourse: !!s.rembourse, tarifsReels: [...reels] };
 }
 
 /** Points situés à des fractions données de la longueur du tracé (pour les points de passage). */

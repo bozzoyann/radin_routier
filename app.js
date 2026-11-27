@@ -9,7 +9,7 @@ import { TARIFS_KM } from './peages-data.js';
 import { prixDuJour } from './carburant.js';
 
 /** Version affichée en haut de la page : à augmenter à chaque modification publiée. */
-export const VERSION = '1.19.3';
+export const VERSION = '1.20.0';
 export const VERSION_DATE = '27/11/2026';
 
 const $ = id => document.getElementById(id);
@@ -42,7 +42,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
 const fmtT = min => { const m = Math.round(min), h = Math.floor(m / 60), r = m % 60; return h ? `${h} h ${String(r).padStart(2, '0')}` : `${r} min`; };
 const fmtE = e => `${Math.round(e)} €`;
 
-function settings() { const s = {}; for (const k of KEYS) s[k] = num(k); return s; }
+function settings() { const s = { rembourse: $('rembourse').checked }; for (const k of KEYS) s[k] = num(k); return s; }
 const actif = () => profils.list.find(p => p.id === profils.actif) || profils.list[0];
 
 /** Recopie les champs dans le profil actif et les critères, puis mémorise. */
@@ -52,9 +52,9 @@ function save() {
   p.carbu = $('carbu').value;
   if (!$('prixauto').checked) prices[p.carbu] = s.prix;   // le prix du jour ne remplace pas ton prix manuel
   store.set(PKEY, profils);
-  store.set(CKEY, { peage: s.peage, limite: isFinite(limite) ? limite : null, prices, prixAuto: $('prixauto').checked });
+  store.set(CKEY, { peage: s.peage, rembourse: s.rembourse, limite: isFinite(limite) ? limite : null, prices, prixAuto: $('prixauto').checked });
   const fr = n => String(n).replace('.', ',');
-  $('sum').textContent = `${p.nom} · ${fr(s.prix)} €/L · ${fr(Math.round(s.usure * 1000) / 10)} c€/km`;
+  $('sum').textContent = `${p.nom} · ${fr(s.prix)} €/L · ${fr(Math.round(s.usure * 1000) / 10)} c€/km${s.rembourse ? ' · péage remboursé' : ''}`;
 }
 
 function gmaps(r) {
@@ -170,7 +170,9 @@ function render() {
     const reels = c.tarifsReels.filter(a => !estime(a)), estimes = c.tarifsReels.filter(estime);
     const precis = [dont, reels.length ? `tarif réel ${reels.join(', ')}` : '', estimes.length ? `tarif estimé ${estimes.join(', ')}` : ''].filter(Boolean).join(' ; ');
     const p = parts(c), eco = ecartE(rapide.c.eur, c.eur);
-    const peage = p.peage >= 1 ? `<i class="pt pt-peage"></i>Péage <b>${p.peage} €</b> <small>(${precis || `~${Math.round(r.tollKm)} km au tarif estimé`})</small>` : '<i class="pt"></i>Sans péage';
+    const quoi = precis || `~${Math.round(r.tollKm)} km au tarif estimé`;
+    const peage = c.rembourse && c.toll >= 0.5 ? `<i class="pt"></i>Péage <b>${fmtE(c.toll)}</b> remboursé, hors du total <small>(${quoi})</small>`
+      : p.peage >= 1 ? `<i class="pt pt-peage"></i>Péage <b>${p.peage} €</b> <small>(${quoi})</small>` : '<i class="pt"></i>Sans péage';
     const couleur = COLORS[id % COLORS.length];
     const cls = ['tr', hot === id ? 'on' : '', best.id === id ? 'choisi' : '', estDomine ? 'variante' : ''].filter(Boolean).join(' ');
     return `<li class="${cls}" data-i="${id}" style="--rc:${couleur}"${estDomine && !voirDomines ? ' hidden' : ''}>
@@ -235,9 +237,10 @@ ${r.mixte ? `<p>${esc(r.mixte.texte)}</p>` : ''}<div class="repart-dt">${anneau(
 <div class="ligne"><span class="tag">${best === rapide ? 'Ton choix · le plus rapide' : 'Ton choix'}</span><button type="button" class="sel droite" data-sel="${best.id}">Trajet ${numero.get(best.id)}</button></div>
 <div class="ligne"><span class="prix">${pb.tot} €</span><span class="duree">${fmtT(best.r.min)}</span></div>${ecart}</div>
 ${anneau(best.c, rapide.c.eur, { etiquette })}</div>
-<div class="repart" aria-hidden="true"><span><i class="pt pt-conso"></i>Conso <b>${pb.conso} €</b></span><span><i class="pt pt-usure"></i>Usure <b>${pb.usure} €</b></span>${pb.peage >= 1 ? `<span><i class="pt pt-peage"></i>Péage <b>${pb.peage} €</b></span>` : '<span>Sans péage</span>'}${eco >= 1 ? `<span><i class="pt pt-eco"></i>Économie <b>${eco} €</b></span>` : ''}</div>`;
+<div class="repart" aria-hidden="true"><span><i class="pt pt-conso"></i>Conso <b>${pb.conso} €</b></span><span><i class="pt pt-usure"></i>Usure <b>${pb.usure} €</b></span>${pb.peage >= 1 ? `<span><i class="pt pt-peage"></i>Péage <b>${pb.peage} €</b></span>` : `<span>${s.rembourse && best.c.toll >= 0.5 ? 'Péage remboursé' : 'Sans péage'}</span>`}${eco >= 1 ? `<span><i class="pt pt-eco"></i>Économie <b>${eco} €</b></span>` : ''}</div>`;
   synth += `<div class="actions"><a class="maps" href="${gmaps(best.r)}" target="_blank" rel="noopener">Ouvrir dans Maps</a></div>`;
   if (sugg) synth += `<div class="sep"></div><div class="ligne"><span class="tag">Au-delà</span><button type="button" class="sel droite" data-sel="${sugg.id}">Trajet ${numero.get(sugg.id)} · −${ecartE(best.c.eur, sugg.c.eur)} € pour +${fmtT(sugg.r.min - best.r.min)}</button></div>`;
+  if (s.rembourse) synth += '<span class="compte">Péage remboursé : il ne compte ni dans les prix ni dans le classement.</span>';
   synth += blocAvancement(neufs.length);
   synth += `<span class="compte">${routes.length} trajets comparés${masques.size ? ` · ${masques.size} sans intérêt, en pointillés sur la carte` : ''}</span>`;
   $('list').innerHTML = `<li class="synth${neufs.length ? ' bravo' : ''}">${synth}</li>` + html;
@@ -491,6 +494,7 @@ function chargerReglages() {
   for (const k of CRIT_KEYS) $(k).value = c[k] != null ? c[k] : DEF[k];
   limite = 'limite' in c ? (c.limite === null ? Infinity : c.limite) : LIMITE_DEF;
   $('prixauto').checked = c.prixAuto !== false;   // prix du jour par défaut
+  $('rembourse').checked = c.rembourse === true;
   $('prix').disabled = $('prixauto').checked;
   afficherProfil();
 }
@@ -557,6 +561,7 @@ $('prixauto').addEventListener('change', () => {
   render();
 });
 for (const k of KEYS) $(k).addEventListener('input', render);
+$('rembourse').addEventListener('change', render);
 $('lim').addEventListener('click', e => {
   const b = e.target.closest('button[data-l]'); if (!b) return;
   limite = b.dataset.l === 'inf' ? Infinity : +b.dataset.l; render();

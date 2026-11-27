@@ -288,3 +288,12 @@ test('classer : changer de pilule fait monter une variante, sans renuméroter', 
   assert.deepEqual([...a.numeros], [...b.numeros]);   // le trajet 3 reste le trajet 3
   assert.deepEqual([...b.numeros], [[0, 1], [2, 2], [1, 3]]);
 });
+
+test('cost : péage remboursé (déplacement pro), calculé mais hors du prix', () => {
+  const r = { km: 200, min: 150, hwKm: 120, routeKm: 70, villeKm: 10, tollKm: 100 };
+  const c = cost(r, { ...DEF, rembourse: true });
+  near(c.toll, 9);                  // toujours calculé, pour la note de frais
+  near(c.eur, c.fuel + c.wear);     // mais il ne compte plus dans le prix, ni donc dans le tri
+  assert.equal(c.rembourse, true);
+  assert.equal(cost(r, DEF).rembourse, false);
+});

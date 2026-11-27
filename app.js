@@ -3,13 +3,13 @@ import { DEF, USURE_DEF, usureParKm, analyse, dedupe, cost, along, marche, class
 import { PROFILES, DELAI_VALHALLA, geocode, route, suggest, lienMaps, lienTrajet, lireTrajet, lieuPourLien } from './routing.js';
 import { candidats, reglagesMixte, joindre, pointsDePassage } from './mixtes.js';
 import { villesTraversees, villesEtapes, nomsTrajets } from './villes.js';
-import { planExploration, coutPlan, produit, assembler, cleMorceau, RAPIDE, LIBRE, vautExplorer } from './explore.js';
+import { planExploration, coutPlan, produit, assembler, cleMorceau, RAPIDE, LIBRE } from './explore.js';
 import { ouvragesTraverses } from './ouvrages.js';
 import { TARIFS_KM } from './peages-data.js';
 import { prixDuJour } from './carburant.js';
 
 /** Version affichée en haut de la page : à augmenter à chaque modification publiée. */
-export const VERSION = '1.35.0';
+export const VERSION = '1.35.1';
 export const VERSION_DATE = '27/11/2026';
 
 const $ = id => document.getElementById(id);
@@ -32,7 +32,6 @@ let prices = {};               // prix du litre par carburant, partagé entre le
 let profils = null;            // {list: [{id, nom, carbu, usure, cville, croute, cauto, wiz}], actif}
 let choix = { from: null, to: null };   // lieux choisis dans les suggestions
 const suggTimer = {};                   // délais de frappe en cours, par champ
-let ecartMax = 0;   // écart de prix entre le plus rapide et le moins cher (pour « Explorer encore »)
 let routes = [], ends = null, hot = -1, voirDomines = false;
 let trouves = [];                 // tous les trajets calculés pour la recherche en cours
 let expl = { etat: 'aucun' };     // exploration approfondie : aucun, pret, encours, fini
@@ -147,7 +146,6 @@ function render() {
   for (const x of autres) x.dom = true;
   masques = new Set(k.masques.map(j => rows[j].id));
   domMap = new Set(autres.map(x => x.id));
-  ecartMax = rows[k.rapide].c.eur - Math.min(...rows.map(x => x.c.eur));
   const rapide = rows[k.rapide], best = rows[k.choix], sugg = k.suggestion >= 0 ? rows[k.suggestion] : null, t0 = rapide.r.min;
   choixId = best.id;
   bulles = new Map(rows.map(x => [x.id, `${parts(x.c).tot} € · ${fmtT(x.r.min)}`]));   // étiquette sur la carte
@@ -501,8 +499,8 @@ async function run(e) {
     const sec = Math.round((performance.now() - t0) / 1000);
     rech = { etat: 'fini', sec, echecs: fails };
     expl = { etat: 'pret' }; render();
-    // Il reste sûrement des économies : l'exploration démarre seule (bouton « Arrêter » pendant).
-    if (vautExplorer(ecartMax, compte) && coutPlan(planExploration(trouves, ends.a, ends.b)) > 0) explorer();
+    // L'exploration démarre seule, à chaque recherche (bouton « Arrêter » pendant).
+    if (coutPlan(planExploration(trouves, ends.a, ends.b)) > 0) explorer();
   } catch (err) {
     rech = { etat: 'aucune' }; majAvancement();
     st.className = 'err';

@@ -10,7 +10,7 @@
   --vert:light-dark(#15803d,#4cc283);--vert-pale:light-dark(#e7f6ec,#163222);
   --orange:light-dark(#b45309,#f0b45a);--orange-pale:light-dark(#fdf1e2,#3a2a14);
   /* Anneau des dépenses : palette validée (daltonisme, clair et sombre) ; montants toujours écrits à côté. */
-  --conso:light-dark(#257de0,#338ced);--usure:light-dark(#ee7fac,#e24d8b);--peage:light-dark(#f2a600,#d28e05);--eco:light-dark(#d5d9df,#3a3f48);
+  --conso:light-dark(#1f5fcf,#2a62c9);--usure:light-dark(#7fb0ef,#6f9fe3);--peage:light-dark(#f2a600,#d28e05);--eco:light-dark(#d5d9df,#3a3f48);
   --bad:light-dark(#b3261e,#ff8a80);--rouge:#dc2626;--jaune:#facc15;--asphalte:#374151;
   --ombre:0 6px 24px rgb(17 24 39/.14);--ombre-pt:0 2px 8px rgb(17 24 39/.12);
   --haut-carte:46dvh}

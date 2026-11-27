@@ -41,3 +41,15 @@ Sans dépendance. Couvre le décodage des tracés, le classement des tronçons, 
 - Adresses : [Photon](https://photon.komoot.io).
 - Carte : [Leaflet](https://leafletjs.com) (licence BSD-2, copié dans `vendor/leaflet/`) et tuiles OpenStreetMap.
 - Données : © contributeurs [OpenStreetMap](https://www.openstreetmap.org/copyright).
+
+## Licence
+
+© 2026 bozzoyann. Le code de Radin routier est publié sous licence **GNU AGPL-3.0 ou ultérieure** (fichier [`LICENSE`](LICENSE)) : il peut être réutilisé et modifié, mais toute version modifiée, y compris mise en ligne comme service web, doit publier son code sous la même licence.
+
+Éléments tiers, qui gardent leur propre licence :
+
+- [Leaflet](https://leafletjs.com) (`vendor/leaflet`) : licence BSD 2-Clause, voir `vendor/leaflet/LICENSE`.
+- Fond de carte et données d'itinéraire : © contributeurs [OpenStreetMap](https://www.openstreetmap.org/copyright) (ODbL).
+- Tarifs APRR et AREA : data.gouv.fr, Licence Ouverte ; gares de péage : data.gouv.fr, ODC-BY ; tarifs VINCI Autoroutes : publiés par la société.
+- Villes : Insee (Licence Ouverte) et GeoNames (CC-BY 4.0).
+- Prix des carburants : ministère de l'Économie (Licence Ouverte).

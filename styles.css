@@ -47,6 +47,7 @@ form{display:flex;flex-direction:column;gap:10px}
 .plaque-noms span:last-child{font-size:16px;font-weight:600}
 form.replie .plaque{display:flex}
 form.replie .od,form.replie .go,form.replie .regl:not([open]){display:none}
+body.resultats .rapides{pointer-events:none}body.resultats .rapides>*{pointer-events:auto}
 .od{padding:12px;display:grid;grid-template-columns:minmax(0,1fr) 44px minmax(0,1fr);gap:8px 10px;align-items:end}
 .ac{position:relative;display:grid;gap:4px}
 .champ{position:relative}.champ input{padding-right:48px}
@@ -93,6 +94,11 @@ legend{font-weight:600;font-size:15px;color:var(--ink);padding:0;margin-bottom:1
 .usure{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:end}
 .secondaire{min-height:44px;padding:0 16px;border:0;border-radius:12px;background:var(--bleu-pale);color:var(--bleu-txt);font:600 15px Inter,sans-serif;cursor:pointer}
 .hint{margin:0;font-size:13px;color:var(--mut)}
+.rapides{display:flex;gap:8px;flex-wrap:wrap}
+.pilule{height:44px;padding:0 14px;border:0;border-radius:20px;background:var(--surf);box-shadow:var(--ombre-pt);color:var(--ink);font:500 14px Inter,sans-serif;display:inline-flex;align-items:center;gap:6px;cursor:pointer;white-space:nowrap}
+.pilule[aria-pressed=true]{background:var(--bleu);color:#fff;font-weight:600;box-shadow:0 2px 8px rgb(28 63 148/.35)}
+.pilule.voiture{padding:0 4px 0 12px;min-width:0;max-width:100%}
+.pilule.voiture select{border:0;background:transparent;min-height:0;height:42px;padding:0 4px;font:500 14px Inter,sans-serif;color:inherit;min-width:0;max-width:200px;text-overflow:ellipsis}
 .go{min-height:54px;border:0;border-radius:16px;background:var(--bleu);color:#fff;font:700 17px Inter,sans-serif;cursor:pointer;box-shadow:0 6px 18px rgb(28 63 148/.35)}
 .go[disabled]{opacity:.6;cursor:wait}
 
@@ -162,6 +168,7 @@ body.resultats .leaflet-bottom{bottom:24px}
   body.resultats .reglette .etiq{flex-basis:100%;height:auto;background:none;padding:0 2px;font-size:13px}
   body.resultats .reglette button{padding:0 12px}
   body.resultats #st{box-shadow:none;background:var(--champ)}
+  body.resultats .pilule:not([aria-pressed=true]){box-shadow:none;background:var(--champ)}
   body.resultats .feuille{background:none;box-shadow:none;border-radius:0;min-height:0;padding:12px 14px 16px}
   body.resultats .feuille::before{display:none}
   .fig{height:100dvh}

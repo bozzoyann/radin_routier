@@ -9,7 +9,7 @@ import { TARIFS_KM } from './peages-data.js';
 import { prixDuJour } from './carburant.js';
 
 /** Version affichée en haut de la page : à augmenter à chaque modification publiée. */
-export const VERSION = '1.26.1';
+export const VERSION = '1.27.0';
 export const VERSION_DATE = '27/11/2026';
 
 const $ = id => document.getElementById(id);
@@ -53,6 +53,7 @@ function save() {
   if (!$('prixauto').checked) prices[p.carbu] = s.prix;   // le prix du jour ne remplace pas ton prix manuel
   store.set(PKEY, profils);
   $('pro').hidden = !s.rembourse;
+  $('proRapide').setAttribute('aria-pressed', String(s.rembourse));
   store.set(CKEY, { peage: s.peage, ik: s.ik, ikDef: DEF.ik, rembourse: s.rembourse, limite: isFinite(limite) ? limite : null, prices, prixAuto: $('prixauto').checked });
   const fr = n => String(n).replace('.', ',');
   $('sum').textContent = `${p.nom} · ${fr(s.prix)} €/L · ${fr(Math.round(s.usure * 1000) / 10)} c€/km${s.rembourse ? ' · péage remboursé' : ''}`;
@@ -524,6 +525,7 @@ function afficherProfil() {
   profils.actif = p.id;
   $('prof').innerHTML = profils.list.map(x => `<option value="${esc(x.id)}">${esc(x.nom)}</option>`).join('');
   $('prof').value = p.id;
+  $('profRapide').innerHTML = $('prof').innerHTML; $('profRapide').value = p.id;
   $('pnom').value = p.nom;
   $('carbu').value = p.carbu;
   $('prixl').textContent = `Prix du ${p.carbu}`;
@@ -536,9 +538,12 @@ function afficherProfil() {
 }
 
 $('prof').addEventListener('change', () => { profils.actif = $('prof').value; afficherProfil(); });
+// Raccourcis : changer de voiture ou de mode recalcule tout de suite les trajets déjà trouvés (sans nouvelle recherche).
+$('profRapide').addEventListener('change', () => { profils.actif = $('profRapide').value; afficherProfil(); });
+$('proRapide').addEventListener('click', () => { $('rembourse').checked = !$('rembourse').checked; render(); });
 $('pnom').addEventListener('input', () => {
   actif().nom = $('pnom').value.trim() || 'Sans nom';
-  $('prof').selectedOptions[0].textContent = actif().nom; save();
+  $('prof').selectedOptions[0].textContent = actif().nom; $('profRapide').selectedOptions[0].textContent = actif().nom; save();
 });
 $('padd').addEventListener('click', () => {
   const p = nouveauProfil(`Voiture ${profils.list.length + 1}`);
@@ -665,13 +670,12 @@ $('f').addEventListener('submit', run);
 if (lien) {
   // Lien reçu : on remplit (avec les coordonnées du lien s'il en a : pas de recherche d'adresse) et on nettoie
   // l'adresse (recharger la page ne relance rien). La recherche attend « Comparer » : le temps de vérifier
-  // sa voiture et le mode pro, réglages ouverts.
+  // sa voiture et le mode pro (raccourcis au-dessus du bouton).
   const lieu = l => (l.lat != null ? { lat: l.lat, lon: l.lon, name: l.nom } : null);
   $('from').value = lien.de.nom; $('to').value = lien.a.nom; choix = { from: lieu(lien.de), to: lieu(lien.a) };
   if (lien.limite !== null) limite = lien.limite;
   history.replaceState(null, '', location.pathname);
-  $('regl').open = true;
-  $('st').className = ''; $('st').textContent = 'Trajet reçu : vérifie ta voiture et le mode pro, puis « Comparer ».';
+  $('st').className = ''; $('st').textContent = 'Trajet reçu : vérifie ta voiture et le mode, puis « Comparer ».';
 }
 $('swap').addEventListener('click', () => { const t = $('from').value; $('from').value = $('to').value; $('to').value = t; choix = { from: choix.to, to: choix.from }; });
 $('list').addEventListener('click', e => {

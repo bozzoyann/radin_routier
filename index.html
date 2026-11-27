@@ -35,6 +35,11 @@
 <button type="button" class="icone swap" id="swap" aria-label="Inverser départ et arrivée"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 4v16M8 4L4 8M8 4l4 4M16 20V4M16 20l-4-4M16 20l4-4"/></svg></button>
 <div class="ac"><label for="to">Arrivée</label><input id="to" placeholder="ex. : Lyon" autocomplete="off" required role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="to-l"><ul class="sugg" id="to-l" role="listbox" hidden></ul></div>
 </div>
+<!-- Raccourcis toujours visibles : la voiture et le mode pro, sans ouvrir les réglages -->
+<div class="rapides" id="rapides">
+<label class="pilule voiture"><svg class="pic" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 16h14M6 16l1.5-5h9L18 16M6 16v3M18 16v3M8 13.5h0M16 13.5h0"/></svg><select id="profRapide" aria-label="Ta voiture"></select></label>
+<button type="button" class="pilule" id="proRapide" aria-pressed="false">Pro · péage remboursé</button>
+</div>
 <button class="go" id="go">Comparer les itinéraires</button>
 <details class="regl" id="regl">
 <summary><svg class="pic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg><span class="regl-titre">Réglages</span><span class="sum" id="sum"></span><svg class="pic chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></summary>

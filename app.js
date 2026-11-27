@@ -9,7 +9,7 @@ import { TARIFS_KM } from './peages-data.js';
 import { prixDuJour } from './carburant.js';
 
 /** Version affichée en haut de la page : à augmenter à chaque modification publiée. */
-export const VERSION = '1.23.0';
+export const VERSION = '1.23.1';
 export const VERSION_DATE = '27/11/2026';
 
 const $ = id => document.getElementById(id);
@@ -252,18 +252,14 @@ let masques = new Set();   // identifiants des trajets sans intérêt : hors de 
 let choixId = -1;          // identifiant de « ton choix »
 let seq = 0;               // prochain identifiant de trajet (remis à zéro à chaque recherche)
 let carte = null, calque = null, cadrage = '';
-// Fond de carte épuré (CARTO, données OpenStreetMap) : gris clair en mode clair, gris anthracite en mode sombre ;
-// la couleur est réservée aux tracés. Conditions : attribution visible, usage non commercial.
-// Les sous-domaines a à d sont l'accès gratuit documenté (l'adresse sans sous-domaine demande une clé).
-const TUILES = { clair: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', sombre: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png' };
-const sombre = () => { const t = document.documentElement.dataset.theme; return t === 'dark' || (t !== 'light' && matchMedia('(prefers-color-scheme: dark)').matches); };
-let fond = null;
-matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => { if (fond) fond.setUrl(TUILES[sombre() ? 'sombre' : 'clair']); });
+// Fond OpenStreetMap, gratuit et sans clé (attribution visible, usage modéré), passé en gris dans styles.css
+// pour que la couleur reste aux tracés. (CARTO, plus sobre, demande désormais une clé nominative : écarté.)
+const TUILES = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
 
 function creerCarte() {
   carte = L.map('carte', { scrollWheelZoom: false, zoomSnap: 0.25, zoomControl: false });
   L.control.zoom({ position: 'topright' }).addTo(carte);
-  fond = L.tileLayer(TUILES[sombre() ? 'sombre' : 'clair'], { subdomains: 'abcd', maxZoom: 19, attribution: '© <a href="https://www.openstreetmap.org/copyright">contributeurs OpenStreetMap</a> © <a href="https://carto.com/attributions">CARTO</a>' }).addTo(carte);
+  L.tileLayer(TUILES, { maxZoom: 18, attribution: '© <a href="https://www.openstreetmap.org/copyright">contributeurs OpenStreetMap</a>', className: 'tuiles' }).addTo(carte);
   calque = L.layerGroup().addTo(carte);
   carte.on('click', () => { if (hot !== -1) { hot = -1; render(); } });   // toucher le fond désélectionne
   new ResizeObserver(() => carte.invalidateSize()).observe($('carte'));

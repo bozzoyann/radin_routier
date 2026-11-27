@@ -150,13 +150,17 @@ body.resultats .leaflet-bottom{bottom:24px}
 
 /* Écran large (Fold ouvert, ordinateur) : panneau flottant à gauche, carte plein écran */
 @media(min-width:720px){
-  body.resultats main{width:400px;margin:12px;background:var(--surf);border-radius:22px;box-shadow:0 8px 30px rgb(17 24 39/.18);min-height:calc(100dvh - 24px)}
+  body.resultats main{width:clamp(400px,50vw,460px);margin:12px;background:var(--surf);border-radius:22px;box-shadow:0 8px 30px rgb(17 24 39/.18);min-height:calc(100dvh - 24px)}
   body.resultats .haut{min-height:0;pointer-events:auto;padding:12px 14px 0}
   body.resultats .tete,body.resultats .lim,body.resultats .reglette{pointer-events:auto}
   body.resultats .marque,body.resultats .ver{box-shadow:none;background:none;padding:0}
   body.resultats .plaque,body.resultats .od,body.resultats .regl{box-shadow:none;background:var(--carte)}
   body.resultats .plaque .icone{background:var(--surf)}
   body.resultats .reglette .etiq,body.resultats .reglette button:not([aria-pressed=true]){box-shadow:none;background:var(--champ)}
+  /* Dans le panneau : « Temps en plus » en légende au-dessus, les pilules tiennent sur une ligne */
+  body.resultats .reglette{flex-wrap:wrap;overflow:visible}
+  body.resultats .reglette .etiq{flex-basis:100%;height:auto;background:none;padding:0 2px;font-size:13px}
+  body.resultats .reglette button{padding:0 12px}
   body.resultats #st{box-shadow:none;background:var(--champ)}
   body.resultats .feuille{background:none;box-shadow:none;border-radius:0;min-height:0;padding:12px 14px 16px}
   body.resultats .feuille::before{display:none}
@@ -288,6 +292,10 @@ body.resultats .leaflet-bottom{bottom:24px}
 .leaflet-touch .leaflet-bar a{width:44px;height:44px;line-height:44px}
 .leaflet-control-attribution{border-radius:8px 0 0 0}
 .touche{cursor:pointer}
+/* Fond OpenStreetMap en gris : sobre en clair, anthracite en sombre (gris puis inversé) */
+.tuiles{filter:grayscale(1) brightness(1.04) contrast(.9)}
+@media (prefers-color-scheme: dark){:root:not([data-theme=light]) .tuiles{filter:grayscale(1) invert(1) brightness(.85) contrast(.85)}}
+:root[data-theme=dark] .tuiles{filter:grayscale(1) invert(1) brightness(.85) contrast(.85)}
 
 /* Montagne de billets (trouvaille de l'exploration) : des billets dessinés, pas d'émoji */
 .fete{position:fixed;inset:0;pointer-events:none;z-index:2000;overflow:hidden;transition:opacity .6s}

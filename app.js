@@ -9,7 +9,7 @@ import { TARIFS_KM } from './peages-data.js';
 import { prixDuJour } from './carburant.js';
 
 /** Version affichée en haut de la page : à augmenter à chaque modification publiée. */
-export const VERSION = '1.35.2';
+export const VERSION = '1.35.3';
 export const VERSION_DATE = '27/11/2026';
 
 const $ = id => document.getElementById(id);
@@ -162,7 +162,7 @@ function render() {
 
   // Un trajet : une carte avec sa pastille de couleur, prix puis durée, routes et villes, actions au toucher.
   const carte = ({ r, id, c, dom: estDomine }) => {
-    const role = best.id === id ? 'Ton choix' : id === rapide.id ? 'Le plus rapide' : id === utiles.at(-1).id ? 'Le moins cher' : '';
+    const role = best.id === id ? 'Recommandé' : id === rapide.id ? 'Le plus rapide' : id === utiles.at(-1).id ? 'Le moins cher' : '';
     // Variante intermédiaire : son écart avec le trajet de l'escalier juste avant, en bout de 2e ligne.
     let ecartV = '';
     if (estDomine) {
@@ -196,7 +196,7 @@ ${r.mixte ? `<p>${esc(r.mixte.texte)}</p>` : ''}<div class="repart-dt">${anneau(
 <p><i class="pt pt-conso"></i>Conso <b>${p.conso} €</b></p>
 <p><i class="pt pt-usure"></i>Usure <b>${p.usure} €</b> <small>(${Math.round(r.km)} km)</small></p>
 <p>${peage}</p>
-<p>Total <b>${p.tot} €</b>${eco >= 1 ? ` · ${eco} € de moins que le plus rapide` : ''}</p>${s.rembourse ? (m => `<p>Ta marge <b>${m.marge >= 0 ? '+' : '−'}${Math.abs(m.marge)} €</b></p>`)(margePro(c, s.ik, rapide.r.km)) : ''}</div></div>${gratuits ? `<p>${gratuits}</p>` : ''}
+<p>Total <b>${p.tot} €</b>${eco >= 1 ? ` · ${eco} € de moins que le plus rapide` : ''}</p>${s.rembourse ? (m => `<p>Marge pro <b>${m.marge >= 0 ? '+' : '−'}${Math.abs(m.marge)} €</b></p>`)(margePro(c, s.ik, rapide.r.km)) : ''}</div></div>${gratuits ? `<p>${gratuits}</p>` : ''}
 <p>${Math.round(r.km)} km : autoroute ${Math.round(r.hwKm)} · route ${Math.round(r.routeKm)} · ville ${Math.round(r.villeKm)}</p>
 <button type="button" class="gpx" data-gpx="${id}" data-n="${numero.get(id)}">Télécharger le GPX</button>
 </details></div>
@@ -235,7 +235,7 @@ ${r.mixte ? `<p>${esc(r.mixte.texte)}</p>` : ''}<div class="repart-dt">${anneau(
   let synth = '';
   if (neufs.length) {
     const top = [best, sugg].find(x => x && x.r.explore) || neufs.reduce((p, q) => q.c.eur < p.c.eur ? q : p);
-    synth += `<div class="ligne"><span class="neuf">Nouveau</span><button type="button" class="sel" data-sel="${top.id}">L'exploration a trouvé ${neufs.length > 1 ? `${neufs.length} trajets` : 'un trajet'} : ${esc(nom(top))}${top === best ? ', ton choix' : ''}</button></div>`;
+    synth += `<div class="ligne"><span class="neuf">Nouveau</span><button type="button" class="sel" data-sel="${top.id}">L'exploration a trouvé ${neufs.length > 1 ? `${neufs.length} trajets` : 'un trajet'} : ${esc(nom(top))}${top === best ? ', désormais recommandé' : ''}</button></div>`;
     if (neufs.length > dejaFete) { dejaFete = neufs.length; pluieDeBillets(); }
   }
   const pb = parts(best.c), eco = ecartE(rapide.c.eur, best.c.eur);
@@ -244,9 +244,9 @@ ${r.mixte ? `<p>${esc(r.mixte.texte)}</p>` : ''}<div class="repart-dt">${anneau(
     : `<div class="ecart">−${eco} € pour +${fmtT(best.r.min - t0)}</div>`;
   const mp = s.rembourse ? margePro(best.c, s.ik, rapide.r.km) : null;   // déplacement pro : note de frais − coût réel
   const marge = mp ? `<span class="marge">Marge pro <b>${mp.marge >= 0 ? '+' : '−'}${Math.abs(mp.marge)} €</b></span>` : '';
-  const etiquette = `Ton choix coûte ${pb.tot} € : conso ${pb.conso} €, usure ${pb.usure} €, ${pb.peage >= 1 ? `péage ${pb.peage} €` : 'sans péage'}${eco >= 1 ? `, et tu économises ${eco} € par rapport au plus rapide` : ''}.`;
+  const etiquette = `Trajet recommandé : ${pb.tot} € : conso ${pb.conso} €, usure ${pb.usure} €, ${pb.peage >= 1 ? `péage ${pb.peage} €` : 'sans péage'}${eco >= 1 ? `, soit ${eco} € de moins que le plus rapide` : ''}.`;
   synth += `<div class="choix-tete"><div class="choix-g">
-<div class="ligne"><button type="button" class="sel titre" data-sel="${best.id}" aria-label="Ton choix : ${esc(nom(best))}">${esc(best === rapide ? `Le plus rapide${nom(best) ? ` · ${nom(best)}` : ''}` : nom(best) || `Trajet ${numero.get(best.id)}`)}</button></div>
+<div class="ligne"><button type="button" class="sel titre" data-sel="${best.id}" aria-label="Trajet recommandé : ${esc(nom(best))}">${esc(best === rapide ? `Le plus rapide${nom(best) ? ` · ${nom(best)}` : ''}` : nom(best) || `Trajet ${numero.get(best.id)}`)}</button></div>
 <div class="ligne"><span class="prix">${pb.tot} €</span><span class="duree">${fmtT(best.r.min)}</span></div><div class="chips">${ecart}${marge}</div></div>
 ${anneau(best.c, rapide.c.eur, { etiquette, taille: 88 })}</div>
 <div class="repart" aria-hidden="true"><span><i class="pt pt-conso"></i>Conso <b>${pb.conso} €</b></span><span><i class="pt pt-usure"></i>Usure <b>${pb.usure} €</b></span>${pb.peage >= 1 ? `<span><i class="pt pt-peage"></i>Péage <b>${pb.peage} €</b></span>` : `<span>${s.rembourse && best.c.toll >= 0.5 ? 'Péage remboursé' : 'Sans péage'}</span>`}${eco >= 1 ? `<span><i class="pt pt-eco"></i>Économie <b>${eco} €</b></span>` : ''}</div>`;
@@ -700,7 +700,7 @@ async function partager() {
     if (navigator.share) { await navigator.share({ title: `Radin routier : ${ends.a.name} → ${ends.b.name}`, url }); return; }
   } catch (e) { if (e.name === 'AbortError') return; }   // partage annulé : rien à faire
   try { await navigator.clipboard.writeText(url); st.className = ''; st.textContent = 'Lien copié.'; setTimeout(() => { if (st.textContent === 'Lien copié.') st.textContent = ''; }, 3000); }
-  catch (e) { prompt('Copie ce lien :', url); }
+  catch (e) { prompt('Lien du trajet :', url); }
 }
 const lien = lireTrajet(location.search);
 const od = store.get('vpt-od');
@@ -714,7 +714,7 @@ if (lien) {
   $('from').value = lien.de.nom; $('to').value = lien.a.nom; choix = { from: lieu(lien.de), to: lieu(lien.a) };
   if (lien.limite !== null) limite = lien.limite;
   history.replaceState(null, '', location.pathname);
-  $('st').className = ''; $('st').textContent = 'Trajet reçu : vérifie ta voiture et le mode, puis « Comparer ».';
+  $('st').className = ''; $('st').textContent = 'Trajet reçu. Vérifier le véhicule et le mode, puis « Comparer ».';
 }
 $('swap').addEventListener('click', () => { const t = $('from').value; $('from').value = $('to').value; $('to').value = t; choix = { from: choix.to, to: choix.from }; });
 $('list').addEventListener('click', e => {
@@ -752,11 +752,11 @@ addEventListener('appinstalled', () => { $('installer').hidden = true; });
 $('ici').addEventListener('click', () => {
   const st = $('st');
   if (!navigator.geolocation) { st.className = 'err'; st.textContent = 'Position indisponible sur cet appareil.'; return; }
-  st.className = ''; st.textContent = 'Recherche de ta position…';
+  st.className = ''; st.textContent = 'Localisation…';
   navigator.geolocation.getCurrentPosition(p => {
     choix.from = { lat: +p.coords.latitude.toFixed(5), lon: +p.coords.longitude.toFixed(5), name: 'Ma position' };
     $('from').value = choix.from.name; st.textContent = '';
-  }, () => { st.className = 'err'; st.textContent = 'Position refusée ou indisponible : saisis le départ.'; },
+  }, () => { st.className = 'err'; st.textContent = 'Position refusée ou indisponible. Saisir le départ.'; },
   { timeout: 10000, maximumAge: 300000 });
 });
 $('edit').addEventListener('click', () => { $('f').classList.remove('replie'); $('from').focus(); });

@@ -28,11 +28,12 @@ export function decode(str, prec = 6) {
 const estAutoroute = m => !!m.highway || (m.street_names || []).some(n => /^A\s?\d/.test(n.trim()));
 
 /**
- * Valhalla (serveur FOSSGIS) compte trop lentement les routes hors autoroute. Comparé à Waze en circulation normale,
- * 0,74 × son temps tombe à ±6 % sur 3 trajets par nationales (N20 ; A77 puis N7, deux variantes), alors que
- * l'autoroute tombe juste (A10 : 78 min contre 77). Calage de novembre 2026, à affiner avec d'autres mesures.
+ * Valhalla (serveur FOSSGIS) compte trop lentement les routes hors autoroute ; sur autoroute, il tombe juste
+ * (A10 : 78 min contre 77 chez Waze). Calage de novembre 2026 sur 9 comparaisons avec Waze et Google Maps en
+ * circulation normale, mêmes départs et arrivées (plaine, voies express, départementales, Massif central, Alpes) :
+ * 0,83 × son temps hors autoroute donne 7 % d'écart moyen, sans biais (de −14 % à +17 % selon le type de route).
  */
-export const K_HORS_AUTOROUTE = 0.74;
+export const K_HORS_AUTOROUTE = 0.83;
 
 /** Classe une manœuvre : 'autoroute', 'ville' ou 'route' (vitesse calculée avec le temps corrigé par `k`). */
 export function classe(m, k = 1) {

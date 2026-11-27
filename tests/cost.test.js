@@ -314,12 +314,12 @@ import { K_HORS_AUTOROUTE } from '../cost.js';
 test('analyse : temps hors autoroute corrigé (Valhalla y est trop lent), autoroute inchangée', () => {
   const t = trip([
     { length: 100, time: 3600, highway: true },   // autoroute : 1 h, gardée telle quelle
-    { length: 50, time: 3600 },                   // 50 km en 1 h pour Valhalla : 0,74 h corrigé (67 km/h)
-    { length: 30, time: 2400 }                    // 45 km/h pour Valhalla : « ville »… 61 km/h corrigé : « route »
+    { length: 50, time: 3600 },                   // 50 km en 1 h pour Valhalla : 0,83 h corrigé (60 km/h)
+    { length: 30, time: 2400 }                    // 45 km/h pour Valhalla : « ville »… 54 km/h corrigé : « route »
   ], { length: 180, time: 9600 });
-  assert.equal(K_HORS_AUTOROUTE, 0.74);
+  assert.equal(K_HORS_AUTOROUTE, 0.83);
   const r = analyse(t);
-  near(r.min, 60 + (60 + 40) * 0.74);           // 134 min au lieu de 160
+  near(r.min, 60 + (60 + 40) * 0.83);           // 143 min au lieu de 160
   near(r.villeKm, 0); near(r.routeKm, 80);      // la conso de ville ne s'applique plus à la nationale
   const brut = analyse(t, { k: 1 });
   near(brut.min, 160); near(brut.villeKm, 30);
@@ -329,5 +329,5 @@ test('analyse : appelée par liste.map(analyse), l\'indice ne change rien (bug d
   const t = trip([{ length: 100, time: 3600, highway: true }, { length: 50, time: 3600 }], { length: 150, time: 7200 });
   const seule = analyse(t);
   for (const r of [t, t, t].map(analyse)) { near(r.min, seule.min); near(r.routeKm, seule.routeKm); }
-  near(seule.min, 60 + 60 * 0.74);
+  near(seule.min, 60 + 60 * K_HORS_AUTOROUTE);
 });

@@ -9,7 +9,7 @@ import { TARIFS_KM } from './peages-data.js';
 import { prixDuJour } from './carburant.js';
 
 /** Version affichée en haut de la page : à augmenter à chaque modification publiée. */
-export const VERSION = '1.33.0';
+export const VERSION = '1.33.1';
 export const VERSION_DATE = '27/11/2026';
 
 const $ = id => document.getElementById(id);
@@ -290,8 +290,8 @@ function draw() {
   calque.clearLayers();
   // Trajets écartés : pointillés gris ronds, dessous, pour montrer tout ce qui a été exploré.
   // Toujours dessinés, même repli fermé : on voit tout ce qui a été calculé et écarté.
-  const fond = matchMedia('(prefers-color-scheme: dark)').matches ? '#9aa1ad' : '#6b7280';
-  for (const r of routes) if (masques.has(r.id) || (!voirDomines && domMap.has(r.id))) L.polyline(allege(r.pts), { color: fond, weight: 3, dashArray: '1 7', lineCap: 'round', opacity: 0.85, interactive: false }).addTo(calque);
+  const fond = matchMedia('(prefers-color-scheme: dark)').matches ? '#b4bac4' : '#4b5563';
+  for (const r of routes) if (masques.has(r.id) || (!voirDomines && domMap.has(r.id))) L.polyline(allege(r.pts), { color: fond, weight: 4, dashArray: '1 8', lineCap: 'round', opacity: 0.9, interactive: false }).addTo(calque);
   // Le trajet mis en avant : celui que tu as touché, sinon ton choix. Dessiné en dernier, par-dessus les autres.
   const focus = hot !== -1 ? hot : choixId;
   const visibles = routes.filter(r => !masques.has(r.id) && (voirDomines || !domMap.has(r.id))).sort((a, b) => (a.id === focus) - (b.id === focus));

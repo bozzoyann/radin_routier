@@ -154,6 +154,7 @@ Le prototype a été testé contre les vrais serveurs le 25 novembre 2026 : Toul
 - **Accès depuis le navigateur** : il faut vérifier que Photon et Valhalla acceptent bien les requêtes venant d'une page publiée sur GitHub Pages (en-têtes CORS).
 - **Serveur public Valhalla (FOSSGIS)** : il est gratuit mais partagé. Il faut garder des requêtes espacées et afficher un message clair si le serveur sature. Si ça ne suffit pas, il reste une instance hébergée soi-même ou un service payant basé sur Valhalla.
 - **Durées sans trafic** : l'écart de temps entre autoroute et nationale peut changer aux heures de pointe.
+- **Temps hors autoroute corrigé** (`cost.js` K_HORS_AUTOROUTE = 0,74) : Valhalla y est trop lent (N20 : 2 h 16 contre 1 h 39 chez Waze). Calé à ±6 % sur 3 trajets de plaine comparés à Waze en circulation normale, avec le même départ (l'autoroute, elle, tombe juste). La vitesse corrigée sert aussi à classer ville et route, donc à la consommation. À vérifier en montagne.
 - **Péage au kilomètre** : l'estimation peut s'écarter du vrai tarif, surtout sur les tronçons courts et les autoroutes chères. Exemple constaté : le viaduc de Millau (A75) coûte environ 11 € pour quelques kilomètres, alors que l'estimation n'en compte que 6 € sur 59 km.
 - **Seuil « ville » à 50 km/h de moyenne** : c'est une approximation, à ajuster après quelques trajets réels.
 - **Usure et décote** : ce sont des estimations, à remplacer par les vraies factures.

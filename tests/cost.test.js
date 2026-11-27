@@ -45,7 +45,7 @@ test('analyse : répartition et recalage sur la distance du résumé', () => {
     { length: 100, time: 3600, highway: true, toll: true }, // autoroute à péage
     { length: 50, time: 2400 },                             // 75 km/h : route
     { length: 10, time: 1200 }                              // 30 km/h : ville
-  ], { length: 176, time: 7200, has_toll: true }));
+  ], { length: 176, time: 7200, has_toll: true }), 1);   // temps brut (sans correction)
   // Somme des manœuvres 160 km, résumé 176 km : facteur 1,1.
   near(r.hwKm, 110); near(r.routeKm, 55); near(r.villeKm, 11); near(r.tollKm, 110);
   near(r.hwKm + r.routeKm + r.villeKm, r.km);
@@ -307,4 +307,20 @@ test('margePro : note de frais (IK sur la distance de référence + péage) moin
   assert.equal(m.note - m.reel, m.marge);  // le péage, remboursé au réel, s'annule
   // Un trajet plus lent mais sans péage, à IK égales : la marge suit le coût réel.
   assert.equal(margePro({ fuel: 60, wear: 32, toll: 0 }, 0.636, 541).marge, 252);
+});
+
+import { K_HORS_AUTOROUTE } from '../cost.js';
+
+test('analyse : temps hors autoroute corrigé (Valhalla y est trop lent), autoroute inchangée', () => {
+  const t = trip([
+    { length: 100, time: 3600, highway: true },   // autoroute : 1 h, gardée telle quelle
+    { length: 50, time: 3600 },                   // 50 km en 1 h pour Valhalla : 0,74 h corrigé (67 km/h)
+    { length: 30, time: 2400 }                    // 45 km/h pour Valhalla : « ville »… 61 km/h corrigé : « route »
+  ], { length: 180, time: 9600 });
+  assert.equal(K_HORS_AUTOROUTE, 0.74);
+  const r = analyse(t);
+  near(r.min, 60 + (60 + 40) * 0.74);           // 134 min au lieu de 160
+  near(r.villeKm, 0); near(r.routeKm, 80);      // la conso de ville ne s'applique plus à la nationale
+  const brut = analyse(t, 1);
+  near(brut.min, 160); near(brut.villeKm, 30);
 });

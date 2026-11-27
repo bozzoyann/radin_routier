@@ -27,11 +27,18 @@ export function decode(str, prec = 6) {
 
 const estAutoroute = m => !!m.highway || (m.street_names || []).some(n => /^A\s?\d/.test(n.trim()));
 
-/** Classe une manœuvre : 'autoroute', 'ville' ou 'route'. */
-export function classe(m) {
+/**
+ * Valhalla (serveur FOSSGIS) compte trop lentement les routes hors autoroute. Comparé à Waze en circulation normale,
+ * 0,74 × son temps tombe à ±6 % sur 3 trajets par nationales (N20 ; A77 puis N7, deux variantes), alors que
+ * l'autoroute tombe juste (A10 : 78 min contre 77). Calage de novembre 2026, à affiner avec d'autres mesures.
+ */
+export const K_HORS_AUTOROUTE = 0.74;
+
+/** Classe une manœuvre : 'autoroute', 'ville' ou 'route' (vitesse calculée avec le temps corrigé par `k`). */
+export function classe(m, k = 1) {
   if (estAutoroute(m)) return 'autoroute';
-  const L = m.length || 0;
-  const vitesse = m.time > 0 ? L / (m.time / 3600) : Infinity;
+  const L = m.length || 0, t = (m.time || 0) * k;
+  const vitesse = t > 0 ? L / (t / 3600) : Infinity;
   return vitesse < SEUIL_VILLE ? 'ville' : 'route';
 }
 
@@ -48,19 +55,22 @@ export function refsOf(man, minKm = 5, max = 6) {
   return [...seen.entries()].filter(([, km]) => km >= minKm).sort((a, b) => b[1] - a[1]).slice(0, max).map(([k]) => k);
 }
 
-/** Résume un trajet Valhalla : distances par type de route, péage, durée, tracé, entrées et sorties d'autoroute. */
-export function analyse(trip) {
+/** Résume un trajet Valhalla : distances par type de route, péage, durée, tracé, entrées et sorties d'autoroute.
+ *  Le temps hors autoroute est corrigé par `k` (voir K_HORS_AUTOROUTE ; 1 : temps brut de Valhalla). */
+export function analyse(trip, k = K_HORS_AUTOROUTE) {
   const leg = trip.legs[0], man = leg.maneuvers || [], pts = decode(leg.shape);
   const km = { autoroute: 0, ville: 0, route: 0 };
   let tollKm = 0, sum = 0, avant = null;
   const ech = [];   // entrées et sorties d'autoroute : {p: [lat, lon], type: 'entree'|'sortie', at: km}
   const peages = [];   // tronçons payants : {km, i0, i1, ref} (indices dans pts, numéro d'autoroute)
+  let gain = 0;   // secondes retirées par la correction hors autoroute
   for (const m of man) {
-    const L = m.length || 0, k = classe(m);
-    const hw = k === 'autoroute';
+    const L = m.length || 0, c = classe(m, k);
+    const hw = c === 'autoroute';
+    if (!hw) gain += (m.time || 0) * (1 - k);
     if (avant !== null && hw !== avant && pts[m.begin_shape_index]) ech.push({ p: pts[m.begin_shape_index], type: hw ? 'entree' : 'sortie', at: sum });
     avant = hw; sum += L;
-    km[k] += L;
+    km[c] += L;
     if (m.toll) {
       // Numéro d'autoroute du tronçon payant (« A 75 » → A75), pour lui appliquer son tarif réel (peages-data.js).
       const a = (m.street_names || []).map(n => /^A\s?(\d+)\b/.exec(n.trim())).find(Boolean);
@@ -73,7 +83,7 @@ export function analyse(trip) {
   // Les longueurs des manœuvres sont arrondies : on les recale sur la distance totale du résumé.
   const f = sum > 0 ? total / sum : 1;
   return {
-    km: total, min: trip.summary.time / 60,
+    km: total, min: (trip.summary.time - gain) / 60,
     hwKm: km.autoroute * f, villeKm: km.ville * f, routeKm: km.route * f, tollKm: tollKm * f,
     refs: refsOf(man), pts, ech, peages: peages.map(p => ({ ...p, km: p.km * f }))
   };

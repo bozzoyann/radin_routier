@@ -9,7 +9,7 @@ import { TARIFS_KM } from './peages-data.js';
 import { prixDuJour } from './carburant.js';
 
 /** Version affichée en haut de la page : à augmenter à chaque modification publiée. */
-export const VERSION = '1.23.1';
+export const VERSION = '1.24.0';
 export const VERSION_DATE = '27/11/2026';
 
 const $ = id => document.getElementById(id);

@@ -9,6 +9,7 @@
   --bleu:light-dark(#1c3f94,#3a5fc0);--bleu-txt:light-dark(#1c3f94,#9db4f0);--bleu-pale:light-dark(#e6ebf6,#1f2a44);
   --vert:light-dark(#15803d,#4cc283);--vert-pale:light-dark(#e7f6ec,#163222);
   --orange:light-dark(#b45309,#f0b45a);--orange-pale:light-dark(#fdf1e2,#3a2a14);
+  --ik:light-dark(#1c3f94,#6f8fe0);--frais:light-dark(#e09a00,#f0b45a);--eco:light-dark(#d5d9df,#3a3f48);
   --bad:light-dark(#b3261e,#ff8a80);--rouge:#dc2626;--jaune:#facc15;--asphalte:#374151;
   --ombre:0 6px 24px rgb(17 24 39/.14);--ombre-pt:0 2px 8px rgb(17 24 39/.12);
   --haut-carte:46dvh}
@@ -173,6 +174,22 @@ body.resultats .leaflet-bottom{bottom:24px}
 .synth .compte{font-size:13px;color:var(--mut)}
 .synth .neuf{font-size:12px;font-weight:700;background:var(--jaune);color:#111827;border-radius:8px;padding:3px 8px}
 .synth.bravo .prix{color:var(--vert)}
+.choix-tete{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;align-items:center}
+.choix-g{display:flex;flex-direction:column;gap:10px}
+.repart{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:13px;color:var(--mut)}
+.repart b{color:var(--ink);font-weight:600}
+.pt{display:inline-block;width:9px;height:9px;border-radius:3px;margin-right:5px}
+.pt-ik{background:var(--ik)}.pt-frais{background:var(--frais)}.pt-eco{background:var(--eco)}
+/* L'anneau des dépenses (app.js anneau) */
+.anneau{flex:none;display:block}
+.anneau .a-fond{stroke:var(--eco)}.anneau .a-ik{stroke:var(--ik)}.anneau .a-frais{stroke:var(--frais)}
+.anneau text{text-anchor:middle}
+.anneau .a-eco{font:700 15px Inter,sans-serif;fill:var(--vert)}
+.anneau .a-tot{font:700 15px Inter,sans-serif;fill:var(--ink)}
+.anneau .a-leg{font:400 9px Inter,sans-serif;fill:var(--mut)}
+.repart-dt{display:grid;grid-template-columns:64px minmax(0,1fr);gap:12px;align-items:center;margin:6px 0}
+.repart-dt p{margin:2px 0}
+.tr.choisi .anneau .a-fond{stroke:rgb(255 255 255/.28)}.tr.choisi .anneau .a-ik{stroke:#fff}.tr.choisi .anneau .a-frais{stroke:#f5b83d}
 .actions{display:flex;gap:10px}
 .actions .maps{flex-grow:1;min-height:48px;border-radius:14px;background:var(--bleu);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:600;text-decoration:none}
 

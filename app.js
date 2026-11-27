@@ -9,7 +9,7 @@ import { TARIFS_KM } from './peages-data.js';
 import { prixDuJour } from './carburant.js';
 
 /** Version affichée en haut de la page : à augmenter à chaque modification publiée. */
-export const VERSION = '1.18.3';
+export const VERSION = '1.19.0';
 export const VERSION_DATE = '27/11/2026';
 
 const $ = id => document.getElementById(id);
@@ -77,6 +77,26 @@ function gpx(r, n) {
 }
 
 const fmtEur = v => `${v.toFixed(2).replace('.', ',')} €`;
+// Écart entre deux prix tel qu'on le lit à l'écran (prix arrondis) : 91 € − 70 € fait bien 21 €.
+const ecartE = (a, b) => Math.round(a) - Math.round(b);
+// Les parts d'un prix, arrondies pour que les additions tombent juste : IK (carburant + usure) + note de frais (péage).
+function parts(c) {
+  const tot = Math.round(c.eur), ik = Math.round(c.fuel + c.wear), carbu = Math.round(c.fuel);
+  return { tot, ik, frais: tot - ik, carbu, usure: ik - carbu };
+}
+// L'anneau des dépenses : IK en bleu, note de frais en ambre et, en gris, l'économie par rapport au plus rapide
+// (le tour complet vaut le prix du plus rapide). Dessiné en SVG, couleurs dans styles.css (.anneau).
+function anneau(c, ref, { taille = 104, centre = true, etiquette = '' } = {}) {
+  const p = parts(c), total = Math.max(Math.round(ref), p.tot), C = 2 * Math.PI * 40;
+  const ik = p.ik / total * C, frais = p.frais / total * C, eco = Math.round(ref) - p.tot;
+  const texte = !centre ? '' : eco >= 1
+    ? `<text x="50" y="49" class="a-eco">−${eco} €</text><text x="50" y="62" class="a-leg">économisés</text>`
+    : `<text x="50" y="50" class="a-tot">${p.tot} €</text><text x="50" y="62" class="a-leg">au total</text>`;
+  return `<svg class="anneau" viewBox="0 0 100 100" width="${taille}" height="${taille}" ${etiquette ? `role="img" aria-label="${esc(etiquette)}"` : 'aria-hidden="true"'}>`
+    + `<g transform="rotate(-90 50 50)" fill="none" stroke-width="15"><circle cx="50" cy="50" r="40" class="a-fond"/>`
+    + `<circle cx="50" cy="50" r="40" class="a-ik" stroke-dasharray="${ik.toFixed(1)} ${C.toFixed(1)}"/>`
+    + `<circle cx="50" cy="50" r="40" class="a-frais" stroke-dasharray="${frais.toFixed(1)} ${C.toFixed(1)}" stroke-dashoffset="${(-ik).toFixed(1)}"/></g>${texte}</svg>`;
+}
 // Ce que rapporte une marche, en minutes perdues par euro gagné : « 1 € toutes les 2,7 min ».
 const tauxTxt = (dt, de) => {
   if (dt <= 0.5 || de <= 0) return '';
@@ -118,10 +138,10 @@ function render() {
       // Variante intermédiaire, comparée au plus proche en durée des deux trajets qui l'encadrent.
       const prec = avant({ r }), suiv = utiles[utiles.indexOf(prec) + 1];
       if (suiv && suiv.r.min - r.min < r.min - prec.r.min) {
-        note = `<p class="note">${fmtT(suiv.r.min - r.min)} plus rapide que le trajet ${numero.get(suiv.id)}, mais ${fmtE(c.eur - suiv.c.eur)} plus cher.</p>`;
+        note = `<p class="note">${fmtT(suiv.r.min - r.min)} plus rapide que le trajet ${numero.get(suiv.id)}, mais ${ecartE(c.eur, suiv.c.eur)} € plus cher.</p>`;
       } else {
-        const de = prec.c.eur - c.eur;
-        note = `<p class="note">${fmtT(r.min - prec.r.min)} de plus que le trajet ${numero.get(prec.id)}, pour ${de < 0.5 ? 'à peine moins cher' : `seulement ${fmtE(de)} de moins`}.</p>`;
+        const de = ecartE(prec.c.eur, c.eur);
+        note = `<p class="note">${fmtT(r.min - prec.r.min)} de plus que le trajet ${numero.get(prec.id)}, pour ${de < 1 ? 'à peine moins cher' : `seulement ${de} € de moins`}.</p>`;
       }
     }
     if (r.explore) note += '<p class="note">Trouvé par l\'exploration.</p>';
@@ -135,7 +155,8 @@ function render() {
     const estime = a => String(TARIFS_KM[a]?.[2] || '').startsWith('estimé');
     const reels = c.tarifsReels.filter(a => !estime(a)), estimes = c.tarifsReels.filter(estime);
     const precis = [dont, reels.length ? `tarif réel ${reels.join(', ')}` : '', estimes.length ? `tarif estimé ${estimes.join(', ')}` : ''].filter(Boolean).join(' ; ');
-    const peage = c.toll >= 0.5 ? `péage ${fmtE(c.toll)} <small>(${precis || `~${Math.round(r.tollKm)} km au tarif estimé`})</small>` : 'sans péage';
+    const p = parts(c), eco = ecartE(rapide.c.eur, c.eur);
+    const frais = p.frais >= 1 ? `<b>Note de frais ${p.frais} €</b> : péage <small>(${precis || `~${Math.round(r.tollKm)} km au tarif estimé`})</small>` : '<b>Pas de note de frais</b> : sans péage';
     const couleur = COLORS[id % COLORS.length];
     const cls = ['tr', hot === id ? 'on' : '', best.id === id ? 'choisi' : '', estDomine ? 'variante' : ''].filter(Boolean).join(' ');
     return `<li class="${cls}" data-i="${id}" style="--rc:${couleur}"${estDomine && !voirDomines ? ' hidden' : ''}>
@@ -143,9 +164,12 @@ function render() {
 <div class="corps">
 <div class="tete-tr"><span class="prix">${fmtE(c.eur)}</span><span class="duree">${fmtT(r.min)}</span><span class="role">${role || `Trajet ${numero.get(id)}`}</span></div>
 <div class="refs">${refs}${via}</div>${note}
-<div class="act"><a class="maps" href="${gmaps(r)}" target="_blank" rel="noopener">Ouvrir dans Maps</a>
+<div class="act">${best.id === id ? '' : `<a class="maps" href="${gmaps(r)}" target="_blank" rel="noopener">Ouvrir dans Maps</a>`}
 <details class="dt"><summary>Détail du prix</summary>
-${r.mixte ? `<p>${esc(r.mixte.texte)}</p>` : ''}<p>carburant ${fmtE(c.fuel)} + usure ${fmtE(c.wear)} + ${peage} = <b>${fmtE(c.eur)}</b></p>${gratuits ? `<p>${gratuits}</p>` : ''}
+${r.mixte ? `<p>${esc(r.mixte.texte)}</p>` : ''}<div class="repart-dt">${anneau(c, rapide.c.eur, { taille: 64, centre: false })}<div>
+<p><b>IK ${p.ik} €</b> : carburant ${p.carbu} € + usure ${p.usure} €</p>
+<p>${frais}</p>
+<p>Total <b>${p.tot} €</b>${eco >= 1 ? ` · ${eco} € de moins que le plus rapide` : ''}</p></div></div>${gratuits ? `<p>${gratuits}</p>` : ''}
 <p>${Math.round(r.km)} km : autoroute ${Math.round(r.hwKm)} · route ${Math.round(r.routeKm)} · ville ${Math.round(r.villeKm)} · trajet ${numero.get(id)}</p>
 <button type="button" class="gpx" data-gpx="${id}" data-n="${numero.get(id)}">Télécharger le GPX</button>
 </details></div>
@@ -158,7 +182,7 @@ ${r.mixte ? `<p>${esc(r.mixte.texte)}</p>` : ''}<p>carburant ${fmtE(c.fuel)} + u
     const m = marche({ min: haut.r.min, eur: haut.c.eur }, { min: bas.r.min, eur: bas.c.eur });
     const cls = bas.r.min <= best.r.min ? 'y' : sugg && bas.r.min <= sugg.r.min ? 'm' : 'n';
     const temps = m.dt > 0.5 ? `+${fmtT(m.dt)}` : 'même durée';
-    return `<li class="marche ${cls}" aria-label="Du trajet ${numero.get(haut.id)} au trajet ${numero.get(bas.id)}"><span class="ecart">${temps} · −${fmtE(m.de)}<span>${tauxTxt(m.dt, m.de)}</span></span></li>`;
+    return `<li class="marche ${cls}" aria-label="Du trajet ${numero.get(haut.id)} au trajet ${numero.get(bas.id)}"><span class="ecart">${temps} · −${ecartE(haut.c.eur, bas.c.eur)} €<span>${tauxTxt(m.dt, m.de)}</span></span></li>`;
   };
 
   // L'escalier, avec les variantes intermédiaires en retrait à leur place (si dépliées).
@@ -186,13 +210,18 @@ ${r.mixte ? `<p>${esc(r.mixte.texte)}</p>` : ''}<p>carburant ${fmtE(c.fuel)} + u
     synth += `<div class="ligne"><span class="neuf">Nouveau</span><button type="button" class="sel" data-sel="${top.id}">L'exploration a trouvé ${neufs.length > 1 ? `${neufs.length} trajets` : 'un trajet'} : trajet ${numero.get(top.id)}${top === best ? ', ton choix' : ''}</button></div>`;
     if (neufs.length > dejaFete) { dejaFete = neufs.length; pluieDeBillets(); }
   }
-  synth += `<div class="ligne"><span class="tag">${best === rapide ? 'Ton choix · le plus rapide' : 'Ton choix'}</span><button type="button" class="sel droite" data-sel="${best.id}">Trajet ${numero.get(best.id)}</button></div>
-<div class="ligne"><span class="prix">${fmtE(best.c.eur)}</span><span class="duree">${fmtT(best.r.min)}</span></div>`;
-  synth += best === rapide
+  const pb = parts(best.c), eco = ecartE(rapide.c.eur, best.c.eur);
+  const ecart = best === rapide
     ? `<div class="ecart">${limite === 0 ? 'Aucune minute de plus acceptée' : `Aucun détour rentable${isFinite(limite) ? ` en ${fmtT(limite)} de plus` : ''}`}</div>`
-    : `<div class="ecart">−${fmtE(rapide.c.eur - best.c.eur)} pour +${fmtT(best.r.min - t0)} <span>vs le plus rapide</span></div>`;
+    : `<div class="ecart">−${eco} € pour +${fmtT(best.r.min - t0)}</div>`;
+  const etiquette = `Ton choix coûte ${pb.tot} € : ${pb.ik} € d'IK (carburant et usure), ${pb.frais} € de note de frais (péage)${eco >= 1 ? `, et tu économises ${eco} € par rapport au plus rapide` : ''}.`;
+  synth += `<div class="choix-tete"><div class="choix-g">
+<div class="ligne"><span class="tag">${best === rapide ? 'Ton choix · le plus rapide' : 'Ton choix'}</span><button type="button" class="sel droite" data-sel="${best.id}">Trajet ${numero.get(best.id)}</button></div>
+<div class="ligne"><span class="prix">${pb.tot} €</span><span class="duree">${fmtT(best.r.min)}</span></div>${ecart}</div>
+${anneau(best.c, rapide.c.eur, { etiquette })}</div>
+<div class="repart" aria-hidden="true"><span><i class="pt pt-ik"></i>IK <b>${pb.ik} €</b></span>${pb.frais >= 1 ? `<span><i class="pt pt-frais"></i>Note de frais <b>${pb.frais} €</b></span>` : '<span><i class="pt pt-frais"></i>Sans péage</span>'}${eco >= 1 ? `<span><i class="pt pt-eco"></i>Économie <b>${eco} €</b></span>` : ''}</div>`;
   synth += `<div class="actions"><a class="maps" href="${gmaps(best.r)}" target="_blank" rel="noopener">Ouvrir dans Maps</a></div>`;
-  if (sugg) synth += `<div class="sep"></div><div class="ligne"><span class="tag">Au-delà</span><button type="button" class="sel droite" data-sel="${sugg.id}">Trajet ${numero.get(sugg.id)} · −${fmtE(best.c.eur - sugg.c.eur)} pour +${fmtT(sugg.r.min - best.r.min)}</button></div>`;
+  if (sugg) synth += `<div class="sep"></div><div class="ligne"><span class="tag">Au-delà</span><button type="button" class="sel droite" data-sel="${sugg.id}">Trajet ${numero.get(sugg.id)} · −${ecartE(best.c.eur, sugg.c.eur)} € pour +${fmtT(sugg.r.min - best.r.min)}</button></div>`;
   synth += blocAvancement(neufs.length);
   synth += `<span class="compte">${routes.length} trajets comparés${masques.size ? ` · ${masques.size} sans intérêt, en pointillés sur la carte` : ''}</span>`;
   $('list').innerHTML = `<li class="synth${neufs.length ? ' bravo' : ''}">${synth}</li>` + html;
@@ -225,12 +254,14 @@ function draw() {
   calque.clearLayers();
   // Trajets sans intérêt : fins pointillés gris, dessous, pour montrer tout ce qui a été exploré.
   for (const r of routes) if (masques.has(r.id)) L.polyline(allege(r.pts), { color: '#7a808c', weight: 2, dashArray: '4 6', opacity: 0.7, interactive: false }).addTo(calque);
-  const visibles = routes.filter(r => !masques.has(r.id)).sort((a, b) => (a.id === hot) - (b.id === hot));
+  // Le trajet mis en avant : celui que tu as touché, sinon ton choix. Dessiné en dernier, par-dessus les autres.
+  const focus = hot !== -1 ? hot : choixId;
+  const visibles = routes.filter(r => !masques.has(r.id)).sort((a, b) => (a.id === focus) - (b.id === focus));
   for (const r of visibles) {
-    const i = r.id, cache = domMap.has(i) && !voirDomines;
-    const pts = allege(r.pts), on = hot === i || (hot === -1 && !cache);
-    if (hot === i) L.polyline(pts, { color: '#ffffff', weight: 10, opacity: 0.9, interactive: false }).addTo(calque);   // liseré blanc
-    L.polyline(pts, { color: COLORS[i % COLORS.length], weight: hot === i ? 6 : 4, opacity: on ? 0.95 : 0.25, interactive: false, lineJoin: 'round' }).addTo(calque);
+    const i = r.id, cache = domMap.has(i) && !voirDomines, enAvant = i === focus;
+    const pts = allege(r.pts), opacite = enAvant ? 1 : cache || hot !== -1 ? 0.25 : 0.6;
+    if (enAvant) L.polyline(pts, { color: '#ffffff', weight: 10, opacity: 0.9, interactive: false }).addTo(calque);   // liseré blanc
+    L.polyline(pts, { color: COLORS[i % COLORS.length], weight: enAvant ? 6 : 4, opacity: opacite, interactive: false, lineJoin: 'round' }).addTo(calque);
     // Un trait large et invisible par-dessus, pour toucher facilement le tracé au doigt.
     if (!cache) {
       L.polyline(pts, { color: '#000', weight: 22, opacity: 0, className: 'touche' })

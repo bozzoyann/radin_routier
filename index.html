@@ -35,6 +35,7 @@
 <button type="button" class="icone swap" id="swap" aria-label="Inverser départ et arrivée"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 4v16M8 4L4 8M8 4l4 4M16 20V4M16 20l-4-4M16 20l4-4"/></svg></button>
 <div class="ac"><label for="to">Arrivée</label><input id="to" placeholder="ex. : Lyon" autocomplete="off" required role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="to-l"><ul class="sugg" id="to-l" role="listbox" hidden></ul></div>
 </div>
+<button class="go" id="go">Comparer les itinéraires</button>
 <details class="regl" id="regl">
 <summary><svg class="pic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg><span class="regl-titre">Réglages</span><span class="sum" id="sum"></span><svg class="pic chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></summary>
 <div class="regl-corps">
@@ -84,7 +85,6 @@
 </fieldset>
 </div>
 </details>
-<button class="go" id="go">Comparer les itinéraires</button>
 </form>
 <p id="st" role="status"></p>
 <div class="lim" id="lim" role="group" aria-label="Temps en plus accepté" hidden>
@@ -105,6 +105,7 @@
 <dt>Usure</dt><dd>Ce qui s'use avec les kilomètres : pneus, freins, embrayage, pièces, décote. 7 c€/km par défaut, réglable.</dd>
 <dt>Péage</dt><dd>Tarif réel au kilomètre de 40 autoroutes (APRR, AREA, VINCI), estimé pour Sanef et SAPN, prix exact de 10 ponts et tunnels (viaduc de Millau, pont de Normandie…), tarifs 2026. Ailleurs, 0,09 €/km. C'est une approximation, pas le tarif exact de la barrière.</dd>
 <dt>Temps</dt><dd>Durées sans trafic.</dd>
+<dt>Anneau</dt><dd>Ce que coûte ton choix : en bleu les IK (carburant et usure), en ambre la note de frais (péage), en gris ce que tu économises par rapport au plus rapide. Le même anneau est dans « Détail du prix » de chaque trajet.</dd>
 <dt>Escalier</dt><dd>Les trajets vont du plus rapide au moins cher ; une marche doit faire gagner au moins 12 %, ou 5 € à 1 €/min. « Ton choix » : le moins cher dans le temps en plus accepté, si chaque pas fait gagner au moins 2 €, et au moins 1 € toutes les 3 min perdues.</dd>
 </dl>
 <p class="sources">Itinéraires <a href="https://valhalla.github.io/valhalla/">Valhalla</a> (serveur FOSSGIS) · adresses <a href="https://photon.komoot.io">Photon</a> · carte <a href="https://leafletjs.com">Leaflet</a> · données © contributeurs <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> · prix des carburants : ministère de l'Économie (Licence Ouverte) · tarifs VINCI Autoroutes publiés par la société ; tarifs APRR et AREA (<a href="https://www.data.gouv.fr/datasets/tarifs-autoroutes-aprr">Licence Ouverte</a>) et gares de péage (<a href="https://www.data.gouv.fr/datasets/gares-de-peage-du-reseau-routier-national-concede">ODC-BY</a>) : data.gouv.fr · villes : Insee (<a href="https://www.etalab.gouv.fr/licence-ouverte-open-licence/">Licence Ouverte</a>) et <a href="https://www.geonames.org/">GeoNames</a> (<a href="https://creativecommons.org/licenses/by/4.0/deed.fr">CC-BY 4.0</a>).</p>

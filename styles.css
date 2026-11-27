@@ -188,6 +188,10 @@ body.resultats .leaflet-bottom{bottom:24px}
 .anneau .a-gain{font:700 15px Inter,sans-serif;fill:var(--vert)}
 .anneau .a-tot{font:700 15px Inter,sans-serif;fill:var(--ink)}
 .anneau .a-leg{font:400 9px Inter,sans-serif;fill:var(--mut)}
+.barre{display:flex;gap:2px;height:6px}
+.barre span{border-radius:3px}
+.b-conso{background:var(--conso)}.b-usure{background:var(--usure)}.b-peage{background:var(--peage)}.b-eco{background:var(--eco)}
+.tr.choisi .barre{background:var(--surf);border-radius:5px;padding:2px;height:10px}
 .repart-dt{display:grid;grid-template-columns:64px minmax(0,1fr);gap:12px;align-items:center;margin:6px 0}
 .repart-dt p{margin:2px 0}
 .repart-dt small{color:var(--mut)}

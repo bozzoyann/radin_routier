@@ -9,7 +9,7 @@ import { TARIFS_KM } from './peages-data.js';
 import { prixDuJour } from './carburant.js';
 
 /** Version affichée en haut de la page : à augmenter à chaque modification publiée. */
-export const VERSION = '1.19.1';
+export const VERSION = '1.19.2';
 export const VERSION_DATE = '27/11/2026';
 
 const $ = id => document.getElementById(id);
@@ -83,6 +83,14 @@ const ecartE = (a, b) => Math.round(a) - Math.round(b);
 function parts(c) {
   const tot = Math.round(c.eur), conso = Math.round(c.fuel), roule = Math.round(c.fuel + c.wear);
   return { tot, conso, usure: roule - conso, peage: tot - roule };
+}
+// La jauge de chaque trajet (barre fine) : les mêmes parts que l'anneau, à la même échelle pour tous (le prix du plus rapide),
+// pour comparer d'un coup d'œil (à kilométrage égal, l'usure a la même longueur ; le péage fond, le gris grandit).
+function jauge(c, ref) {
+  const p = parts(c), eco = Math.round(ref) - p.tot;
+  const morceaux = [['conso', p.conso], ['usure', p.usure], ['peage', p.peage], ['eco', eco]].filter(m => m[1] >= 1);
+  const nom = `Conso ${p.conso} €, usure ${p.usure} €, ${p.peage >= 1 ? `péage ${p.peage} €` : 'sans péage'}${eco >= 1 ? `, ${eco} € économisés` : ''}`;
+  return `<div class="barre" role="img" aria-label="${nom}">${morceaux.map(([k, v]) => `<span class="b-${k}" style="flex:${v}"></span>`).join('')}</div>`;
 }
 // L'anneau des dépenses : conso, usure, péage et, en gris, l'économie par rapport au plus rapide (le tour complet
 // vaut le prix du plus rapide). SVG, 2 px de vide entre deux parts, une part nulle ne se dessine pas ;
@@ -169,6 +177,7 @@ function render() {
 <div class="rail"><span class="point" style="background:${couleur}"></span></div>
 <div class="corps">
 <div class="tete-tr"><span class="prix">${fmtE(c.eur)}</span><span class="duree">${fmtT(r.min)}</span><span class="role">${role || `Trajet ${numero.get(id)}`}</span></div>
+${jauge(c, rapide.c.eur)}
 <div class="refs">${refs}${via}</div>${note}
 <div class="act">${best.id === id ? '' : `<a class="maps" href="${gmaps(r)}" target="_blank" rel="noopener">Ouvrir dans Maps</a>`}
 <details class="dt"><summary>Détail du prix</summary>

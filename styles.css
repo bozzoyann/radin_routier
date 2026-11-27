@@ -188,7 +188,6 @@ body.resultats .leaflet-bottom{bottom:24px}
 .synth .sel{background:none;border:0;padding:0;color:var(--bleu-txt);font:600 14px Inter,sans-serif;cursor:pointer;text-align:left;min-height:44px}
 .chips{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
 .chips .marge{font-size:14px;font-weight:600;color:var(--bleu-txt);background:var(--bleu-pale);border-radius:10px;padding:4px 10px;margin:0}.chips .marge b{font:inherit;color:inherit}
-.pilule-explo{margin-left:auto;min-height:44px;border:0;border-radius:22px;background:var(--bleu);color:#fff;padding:0 16px;font:600 14px Inter,sans-serif;display:inline-flex;align-items:center;gap:6px;cursor:pointer;white-space:nowrap;box-shadow:0 2px 8px rgb(28 63 148/.25)}.pilule-explo small{font-weight:400;color:#dfe6f7}.pilule-explo svg{stroke:#fff}
 .lien{margin-left:auto;min-height:44px;border:0;background:none;padding:0 0 0 8px;color:var(--bleu-txt);font:600 14px Inter,sans-serif;display:inline-flex;align-items:center;gap:6px;cursor:pointer;white-space:nowrap}.lien small{font-weight:400;color:var(--mut)}
 .info-autres{font-size:13px;color:var(--mut);padding:0 4px}
 .synth .compte{font-size:13px;color:var(--mut)}
@@ -224,7 +223,7 @@ body.resultats .leaflet-bottom{bottom:24px}
 .actions .maps{flex-grow:1;min-height:48px;border-radius:14px;background:var(--bleu);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:600;text-decoration:none}
 
 /* Avancement : une petite route qui se trace */
-.explo-li{padding:2px 4px 12px;margin-bottom:8px;border-bottom:1px solid var(--line)}.explo-li:has(#avancement:empty){display:none}
+.explo-li{padding:2px 4px 12px}.explo-li:has(#avancement:empty){display:none}.bilan-li{padding:4px 4px 8px}.bilan-li:has(#bilan:empty){display:none}
 .synth .tag{white-space:nowrap}
 #avancement{display:flex;flex-direction:column;gap:8px}#avancement:empty{display:none}
 .avance-txt{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--mut);flex-wrap:wrap}

@@ -9,7 +9,7 @@ import { TARIFS_KM } from './peages-data.js';
 import { prixDuJour } from './carburant.js';
 
 /** Version affichée en haut de la page : à augmenter à chaque modification publiée. */
-export const VERSION = '1.34.3';
+export const VERSION = '1.35.0';
 export const VERSION_DATE = '27/11/2026';
 
 const $ = id => document.getElementById(id);
@@ -258,8 +258,8 @@ ${anneau(best.c, rapide.c.eur, { etiquette, taille: 88 })}</div>
   synth += `<div class="actions"><a class="maps" href="${gmaps(best, rapide.r)}" target="_blank" rel="noopener">Ouvrir dans Maps</a><button type="button" class="icone partage" id="partage" aria-label="Partager ce trajet"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 13v6a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-6M12 3v12M7 8l5-5 5 5"/></svg></button></div>`;
   if (sugg) synth += `<div class="sep"></div><div class="ligne"><span class="tag">Au-delà</span><button type="button" class="sel droite" data-sel="${sugg.id}">${esc(nom(sugg))} · −${ecartE(best.c.eur, sugg.c.eur)} € pour +${fmtT(sugg.r.min - best.r.min)}</button></div>`;
   compte = routes.length;
-  // Avancement et « Explorer encore » hors de la carte du résultat : c'est le travail, pas la recommandation.
-  $('list').innerHTML = `<li class="synth${neufs.length ? ' bravo' : ''}">${synth}</li><li class="explo-li">${blocAvancement(neufs.length)}</li>` + html;
+  // Avancement (recherche, exploration + Arrêter) sous la carte du résultat ; le bilan en bas de liste.
+  $('list').innerHTML = `<li class="synth${neufs.length ? ' bravo' : ''}">${synth}</li><li class="explo-li">${blocAvancement(neufs.length)}</li>` + html + `<li class="bilan-li">${blocBilan(neufs.length)}</li>`;
   draw();
 }
 
@@ -370,18 +370,26 @@ function blocAvancement(nouveaux = derniersNeufs) {
   } else if (expl.etat === 'encours') {
     const pc = Math.round(100 * expl.fait / Math.max(1, expl.total));
     h = barre(pc, `Exploration · ${expl.testes} trajets testés${nouveaux ? ` · ${nouveaux} nouveau${nouveaux > 1 ? 'x' : ''}` : ''}`, '<button type="button" class="contour" id="stopx">Arrêter</button>');
-  } else if (rech.etat === 'fini') {
-    if (expl.etat === 'fini') {
-      h = `<div class="avance-txt"><span>${compte} trajets comparés · exploration${expl.stop ? ' arrêtée' : ''} : ${nouveaux ? `${nouveaux} nouveau${nouveaux > 1 ? 'x' : ''}` : 'rien de mieux'}</span></div>`;
-    } else {
-      const n = expl.etat === 'pret' ? coutPlan(planExploration(trouves, ends.a, ends.b)) : 0;
-      h = `<div class="avance-txt"><span>${compte} trajets comparés en ${rech.sec} s${rech.echecs ? ` · ${rech.echecs} échec${rech.echecs > 1 ? 's' : ''}` : ''}</span>`
-        + (n ? `<button type="button" class="${vautExplorer(ecartMax, compte) ? 'pilule-explo' : 'lien'}" id="explo">${LOUPE}Explorer encore <small>≈ ${String(Math.max(0.5, Math.round(n * 1.5 / 30) / 2)).replace('.', ',')} min</small></button>` : '') + '</div>';
-    }
   }
   return `<div id="avancement">${h}</div>`;
 }
-function majAvancement() { const el = $('avancement'); if (el) el.outerHTML = blocAvancement(); }
+// Bilan, en bas de la liste après l'escalier : combien de trajets comparés, et « Explorer encore » si on n'a pas exploré.
+function blocBilan(nouveaux = derniersNeufs) {
+  let h = '';
+  if (rech.etat === 'fini' && expl.etat !== 'encours') {
+    if (expl.etat === 'fini') {
+      h = `<span>${compte} trajets comparés · exploration${expl.stop ? ' arrêtée' : ''} : ${nouveaux ? `${nouveaux} nouveau${nouveaux > 1 ? 'x' : ''}` : 'rien de mieux'}</span>`;
+    } else {
+      const n = expl.etat === 'pret' ? coutPlan(planExploration(trouves, ends.a, ends.b)) : 0;
+      h = `<span>${compte} trajets comparés en ${rech.sec} s${rech.echecs ? ` · ${rech.echecs} échec${rech.echecs > 1 ? 's' : ''}` : ''}</span>`
+        + (n ? `<button type="button" class="lien" id="explo">${LOUPE}Explorer encore <small>≈ ${String(Math.max(0.5, Math.round(n * 1.5 / 30) / 2)).replace('.', ',')} min</small></button>` : '');
+    }
+  }
+  return `<div id="bilan" class="avance-txt">${h}</div>`;
+}
+function majAvancement() {
+  for (const [id, f] of [['avancement', blocAvancement], ['bilan', blocBilan]]) { const el = $(id); if (el) el.outerHTML = f(); }
+}
 
 async function explorer() {
   const moi = expl = { etat: 'encours', fait: 0, testes: 0, total: 0, stop: false };
@@ -493,6 +501,8 @@ async function run(e) {
     const sec = Math.round((performance.now() - t0) / 1000);
     rech = { etat: 'fini', sec, echecs: fails };
     expl = { etat: 'pret' }; render();
+    // Il reste sûrement des économies : l'exploration démarre seule (bouton « Arrêter » pendant).
+    if (vautExplorer(ecartMax, compte) && coutPlan(planExploration(trouves, ends.a, ends.b)) > 0) explorer();
   } catch (err) {
     rech = { etat: 'aucune' }; majAvancement();
     st.className = 'err';

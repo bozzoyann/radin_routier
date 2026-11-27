@@ -9,7 +9,7 @@ import { TARIFS_KM } from './peages-data.js';
 import { prixDuJour } from './carburant.js';
 
 /** Version affichée en haut de la page : à augmenter à chaque modification publiée. */
-export const VERSION = '1.34.1';
+export const VERSION = '1.34.2';
 export const VERSION_DATE = '27/11/2026';
 
 const $ = id => document.getElementById(id);
@@ -258,8 +258,8 @@ ${anneau(best.c, rapide.c.eur, { etiquette, taille: 88 })}</div>
   synth += `<div class="actions"><a class="maps" href="${gmaps(best, rapide.r)}" target="_blank" rel="noopener">Ouvrir dans Maps</a><button type="button" class="icone partage" id="partage" aria-label="Partager ce trajet"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 13v6a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-6M12 3v12M7 8l5-5 5 5"/></svg></button></div>`;
   if (sugg) synth += `<div class="sep"></div><div class="ligne"><span class="tag">Au-delà</span><button type="button" class="sel droite" data-sel="${sugg.id}">${esc(nom(sugg))} · −${ecartE(best.c.eur, sugg.c.eur)} € pour +${fmtT(sugg.r.min - best.r.min)}</button></div>`;
   compte = routes.length;
-  synth += blocAvancement(neufs.length);
-  $('list').innerHTML = `<li class="synth${neufs.length ? ' bravo' : ''}">${synth}</li>` + html;
+  // Avancement et « Explorer encore » hors de la carte du résultat : c'est le travail, pas la recommandation.
+  $('list').innerHTML = `<li class="synth${neufs.length ? ' bravo' : ''}">${synth}</li><li class="explo-li">${blocAvancement(neufs.length)}</li>` + html;
   draw();
 }
 
